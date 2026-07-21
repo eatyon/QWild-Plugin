@@ -1,5 +1,5 @@
 import { config } from "../model/config.js"
-import { getCurrentEvent, isNoRoute } from "./context.js"
+import { getCurrentEvent, isNoRoute, withNoRoute } from "./context.js"
 import { eventProtocol, isProtocol, shouldBypassRuntime } from "./protocol.js"
 import {
   isMissingIdentityMapError,
@@ -12,6 +12,14 @@ import { isSendSuccess, targetProtocol } from "./message.js"
 
 const patchedFriendBots = new WeakSet()
 const patchedGroupBots = new WeakSet()
+const botApiPatchFlag = Symbol.for("QWild.Plugin.DirectBotApiPatched")
+
+function protocolByBotId(botId) {
+  const bot = Bot?.[botId] || Bot?.bots?.[botId]
+  if (isProtocol(bot, "qqbot")) return "qqbot"
+  if (isProtocol(bot, "onebot")) return "onebot"
+  return ""
+}
 
 function qqbotGroupKey(botId, groupId) {
   groupId = String(groupId || "")
@@ -103,7 +111,42 @@ function patchPickGroup(bot, botId, protocol) {
   patchedGroupBots.add(bot)
 }
 
+function patchBotApi() {
+  if (!Bot || Bot[botApiPatchFlag]) return
+
+  const originalSendFriendMsg = Bot.sendFriendMsg?.bind(Bot)
+  if (originalSendFriendMsg) {
+    Bot.sendFriendMsg = async (botId, userId, ...args) => {
+      const protocol = protocolByBotId(botId)
+      const msg = args.length > 1 ? args : args[0]
+      if (!protocol || !shouldRouteDirectSend(protocol, msg)) {
+        return originalSendFriendMsg(botId, userId, ...args)
+      }
+      const originalSendMsg = sendMsg => withNoRoute(() => originalSendFriendMsg(botId, userId, sendMsg))
+      const key = protocol === "qqbot" ? qqbotUserKey(botId, userId) : userId
+      return routeDirectSend(protocol, "friend", key, userId, msg, originalSendMsg)
+    }
+  }
+
+  const originalSendGroupMsg = Bot.sendGroupMsg?.bind(Bot)
+  if (originalSendGroupMsg) {
+    Bot.sendGroupMsg = async (botId, groupId, ...args) => {
+      const protocol = protocolByBotId(botId)
+      const msg = args.length > 1 ? args : args[0]
+      if (!protocol || !shouldRouteDirectSend(protocol, msg)) {
+        return originalSendGroupMsg(botId, groupId, ...args)
+      }
+      const originalSendMsg = sendMsg => withNoRoute(() => originalSendGroupMsg(botId, groupId, sendMsg))
+      const key = protocol === "qqbot" ? qqbotGroupKey(botId, groupId) : groupId
+      return routeDirectSend(protocol, "group", key, groupId, msg, originalSendMsg)
+    }
+  }
+
+  Bot[botApiPatchFlag] = true
+}
+
 export function patchDirectSend() {
+  patchBotApi()
   for (const id of Bot?.uin || []) {
     const bot = Bot[id]
     if (isProtocol(bot, "qqbot")) {
