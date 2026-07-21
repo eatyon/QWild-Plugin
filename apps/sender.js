@@ -40,9 +40,9 @@ function reverseMappedValue(map, value) {
   return ""
 }
 
-async function sendQQBotGroup(e, msg, baseReply) {
-  const qqbotGroupId = reverseMappedValue(config.groups, e?.group_id)
-  if (!qqbotGroupId) throw new MissingIdentityMapError(e?.group_id)
+export async function sendQQBotGroupByOneBotId(onebotGroupId, msg, baseReply) {
+  const qqbotGroupId = reverseMappedValue(config.groups, onebotGroupId)
+  if (!qqbotGroupId) throw new MissingIdentityMapError(onebotGroupId)
 
   const qqbot = findBot("qqbot")
   if (!qqbot?.pickGroup) throw new Error("QQBot 未在线")
@@ -50,9 +50,9 @@ async function sendQQBotGroup(e, msg, baseReply) {
   return qqbot.pickGroup(qqbotGroupId).sendMsg(stripReply(msg))
 }
 
-async function sendOneBotGroup(e, msg, baseReply) {
-  const onebotGroupId = mappedValue(config.groups, qqbotGroupKey(e))
-  if (!onebotGroupId) throw new MissingIdentityMapError(qqbotGroupKey(e))
+export async function sendOneBotGroupByQQBotId(qqbotGroupId, msg, baseReply) {
+  const onebotGroupId = mappedValue(config.groups, qqbotGroupId)
+  if (!onebotGroupId) throw new MissingIdentityMapError(qqbotGroupId)
 
   const onebot = findBot("onebot")
   if (!onebot?.pickGroup) throw new Error("OneBotv11 未在线")
@@ -89,13 +89,13 @@ async function sendOneBotFriend(e, msg, baseReply) {
 }
 
 export async function sendQQBot(e, msg, baseReply) {
-  if (e?.isGroup || e?.message_type === "group") return sendQQBotGroup(e, msg, baseReply)
+  if (e?.isGroup || e?.message_type === "group") return sendQQBotGroupByOneBotId(e?.group_id, msg, baseReply)
   if (e?.isPrivate || e?.message_type === "private") return sendQQBotFriend(e, msg, baseReply)
   throw new MissingIdentityMapError(e?.group_id || e?.user_id || "unknown")
 }
 
 export async function sendOneBot(e, msg, baseReply) {
-  if (e?.isGroup || e?.message_type === "group") return sendOneBotGroup(e, msg, baseReply)
+  if (e?.isGroup || e?.message_type === "group") return sendOneBotGroupByQQBotId(qqbotGroupKey(e), msg, baseReply)
   if (e?.isPrivate || e?.message_type === "private") return sendOneBotFriend(e, msg, baseReply)
   throw new MissingIdentityMapError(e?.group_id || e?.user_id || "unknown")
 }

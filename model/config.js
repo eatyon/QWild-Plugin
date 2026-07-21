@@ -65,7 +65,7 @@ export const defaultConfig = {
     enable: true,
     default: "",
     failover: false,
-    active_private: {
+    active_message: {
       enable: false,
     },
     text: "qqbot",
@@ -265,13 +265,18 @@ function normalizeConfig() {
   config.runtime.require_both_online = normalizeBoolean(config.runtime.require_both_online, true)
   normalizeReceive("qqbot")
   normalizeReceive("onebot")
+  const sendSource = config.send && typeof config.send === "object" ? config.send : {}
+  config.send = structuredClone(defaultConfig.send)
+  for (const key of Object.keys(defaultConfig.send)) {
+    if (Object.hasOwn(sendSource, key)) config.send[key] = sendSource[key]
+  }
   config.send.enable = normalizeBoolean(config.send.enable, true)
   config.send.default = normalizeOptionalProtocol(config.send.default)
   config.send.failover = normalizeBoolean(config.send.failover, false)
-  if (!config.send.active_private || typeof config.send.active_private !== "object") {
-    config.send.active_private = structuredClone(defaultConfig.send.active_private)
+  if (!config.send.active_message || typeof config.send.active_message !== "object") {
+    config.send.active_message = structuredClone(defaultConfig.send.active_message)
   }
-  config.send.active_private.enable = normalizeBoolean(config.send.active_private.enable, false)
+  config.send.active_message.enable = normalizeBoolean(config.send.active_message.enable, false)
   for (const type of ["text", "image", "image_text", "markdown", "button", "file", "record", "video", "link"]) {
     config.send[type] = normalizeOptionalProtocol(config.send[type])
   }
@@ -502,9 +507,9 @@ default: ${quote(config.send.default)}
 # 目标协议发送失败时尝试另一协议，缺少身份映射不会触发切换。
 failover: ${config.send.failover}
 
-# 接管定时任务、插件主动私聊等非回复消息。
-active_private:
-  enable: ${config.send.active_private.enable}
+# 接管定时任务、插件主动群聊/私聊等非回复消息。
+active_message:
+  enable: ${config.send.active_message.enable}
 
 # 以下类型留空表示不接管，直接走原协议。
 text: ${quote(config.send.text)}

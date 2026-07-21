@@ -328,16 +328,22 @@ export function supportGuoba() {
           bottomHelpMessage: "关闭后不接管发送，全部走原协议",
         },
         {
-          field: "send.active_private.enable",
-          label: "接管主动私聊",
+          field: "send.active_message.enable",
+          label: "主动消息接管",
           component: "Switch",
-          bottomHelpMessage: "定时任务、主动私聊等非回复消息也走发送分流",
+          bottomHelpMessage: "定时任务、主动群聊/私聊等非回复消息也走发送分流",
         },
         {
           field: "send.failover",
           label: "发送失败切换协议",
           component: "Switch",
           bottomHelpMessage: "目标协议发送失败时尝试另一协议，缺少映射不切换",
+        },
+        {
+          field: "identity.unmapped_passthrough",
+          label: "未映射不分流",
+          component: "Switch",
+          bottomHelpMessage: "缺少群聊或用户映射时，不跨协议分流，直接走原协议",
         },
         {
           field: "sendCommandRules",
@@ -374,6 +380,10 @@ export function supportGuoba() {
             ],
           },
         },
+        {
+          component: "SOFT_GROUP_BEGIN",
+          label: "消息类型分流",
+        },
         sendSchema("send.text", "文本消息"),
         sendSchema("send.image", "图片消息"),
         sendSchema("send.image_text", "图文消息", "qqbot"),
@@ -389,12 +399,6 @@ export function supportGuoba() {
         {
           component: "SOFT_GROUP_BEGIN",
           label: "身份映射",
-        },
-        {
-          field: "identity.unmapped_passthrough",
-          label: "未映射不分流",
-          component: "Switch",
-          bottomHelpMessage: "缺少群聊或用户映射时，不跨协议分流，直接走原协议",
         },
         {
           field: "groupList",

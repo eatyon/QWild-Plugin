@@ -321,7 +321,7 @@ export class qwildAdmin extends plugin {
           { title: "未映射不分流", value: onOff(config.identity?.unmapped_passthrough), type: statusType(config.identity?.unmapped_passthrough) },
           { title: "QQBot 接收阻断", value: onOff(config.receive.qqbot.block), type: statusType(config.receive.qqbot.block) },
           { title: "OBv11 接收阻断", value: onOff(config.receive.onebot.block), type: statusType(config.receive.onebot.block) },
-          { title: "接管主动私聊", value: onOff(config.send.active_private?.enable), type: statusType(config.send.active_private?.enable) },
+          { title: "主动消息接管", value: onOff(config.send.active_message?.enable), type: statusType(config.send.active_message?.enable) },
           { title: "发送失败切换", value: onOff(config.send.failover), type: statusType(config.send.failover) },
         ],
       },

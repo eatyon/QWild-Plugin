@@ -8,8 +8,8 @@ default: ""
 # 目标协议发送失败时尝试另一协议，缺少身份映射不会触发切换。
 failover: false
 
-# 接管定时任务、插件主动私聊等非回复消息。
-active_private:
+# 接管定时任务、插件主动群聊/私聊等非回复消息。
+active_message:
   enable: false
 
 # 以下类型留空表示不接管，直接走原协议。
