@@ -134,7 +134,6 @@ function receiveSchemas(protocol, title, adapterTitle) {
       field: `receive.${protocol}.group_list`,
       label: "群聊名单",
       component: "Select",
-      bottomHelpMessage: "QQBot 可填 botid:groupid 或 groupid，OBv11 填 QQ 群号",
       componentProps: {
         mode: "tags",
         options: groupOptions(protocol),
@@ -153,7 +152,6 @@ function receiveSchemas(protocol, title, adapterTitle) {
       field: `receive.${protocol}.user_list`,
       label: "用户名单",
       component: "Select",
-      bottomHelpMessage: "QQBot 可填 botid:userid 或 userid，OBv11 填 QQ 号",
       componentProps: {
         mode: "tags",
         options: userOptions(protocol),
