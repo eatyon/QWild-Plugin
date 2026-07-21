@@ -125,6 +125,7 @@ function receiveSchemas(protocol, title, adapterTitle) {
       field: `receive.${protocol}.group_mode`,
       label: "群聊过滤模式",
       component: "Select",
+      bottomHelpMessage: "黑名单：名单内阻断；白名单：只放行名单内",
       componentProps: {
         options: modeOptions(),
       },
@@ -133,6 +134,7 @@ function receiveSchemas(protocol, title, adapterTitle) {
       field: `receive.${protocol}.group_list`,
       label: "群聊名单",
       component: "Select",
+      bottomHelpMessage: "QQBot 可填 botid:groupid 或 groupid，OBv11 填 QQ 群号",
       componentProps: {
         mode: "tags",
         options: groupOptions(protocol),
@@ -142,6 +144,7 @@ function receiveSchemas(protocol, title, adapterTitle) {
       field: `receive.${protocol}.user_mode`,
       label: "用户过滤模式",
       component: "Select",
+      bottomHelpMessage: "黑名单：名单内阻断；白名单：只放行名单内",
       componentProps: {
         options: modeOptions(),
       },
@@ -150,6 +153,7 @@ function receiveSchemas(protocol, title, adapterTitle) {
       field: `receive.${protocol}.user_list`,
       label: "用户名单",
       component: "Select",
+      bottomHelpMessage: "QQBot 可填 botid:userid 或 userid，OBv11 填 QQ 号",
       componentProps: {
         mode: "tags",
         options: userOptions(protocol),
