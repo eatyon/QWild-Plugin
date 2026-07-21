@@ -3,10 +3,6 @@ import { AsyncLocalStorage } from "node:async_hooks"
 let currentEvent = null
 const noRouteStore = new AsyncLocalStorage()
 
-export function setCurrentEvent(e) {
-  currentEvent = e || null
-}
-
 export function getCurrentEvent() {
   return currentEvent
 }

@@ -381,7 +381,7 @@ export function supportGuoba() {
           },
         },
         {
-          component: "SOFT_GROUP_BEGIN",
+          component: "Divider",
           label: "消息类型分流",
         },
         sendSchema("send.text", "文本消息"),
