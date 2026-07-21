@@ -1,0 +1,66 @@
+.qwild-status {
+  padding-bottom: 28px;
+}
+
+.status-table {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.status-table .tr {
+  display: table-row;
+}
+
+.status-table .td {
+  display: table-cell;
+  width: 50%;
+  padding: 15px 30px;
+  box-shadow: 0 0 1px rgba(255, 255, 255, 0.16) inset;
+  vertical-align: middle;
+}
+
+.status-table .td.empty {
+  box-shadow: none;
+}
+
+.status-name {
+  display: inline-block;
+  max-width: 255px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 16px;
+  line-height: 28px;
+  white-space: nowrap;
+}
+
+.status-value {
+  display: inline-block;
+  float: right;
+  min-width: 64px;
+  padding: 3px 12px 4px;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 800;
+  color: #16181c;
+  background: #d3bc8e;
+  max-width: 230px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.status-ok {
+  background: #d3bc8e;
+}
+
+.status-route {
+  background: rgba(211, 188, 142, 0.22);
+  color: #ead7a5;
+}
+
+.status-off {
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.74);
+}

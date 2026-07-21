@@ -1,0 +1,19 @@
+# QWild 接收控制
+# block 为 true 时，该协议收到的消息不会进入云崽插件处理。
+# group_mode / user_mode 可选 black 或 white。
+# black：名单内阻断；white：只放行名单内。
+# command_white_list：通过群聊/用户过滤后，命中命令则放行，不再阻断。
+qqbot:
+  block: false
+  command_white_list: []
+  group_mode: "black"
+  group_list: []
+  user_mode: "black"
+  user_list: []
+onebot:
+  block: false
+  command_white_list: []
+  group_mode: "black"
+  group_list: []
+  user_mode: "black"
+  user_list: []

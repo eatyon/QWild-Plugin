@@ -1,0 +1,31 @@
+# QWild 发送分流
+# enable 为发送分流总开关。关闭后不接管发送，全部走原协议。
+enable: true
+
+# 未知类型消息使用的协议；留空表示未知类型走原协议。
+default: ""
+
+# 目标协议发送失败时尝试另一协议，缺少身份映射不会触发切换。
+failover: false
+
+# 接管定时任务、插件主动私聊等非回复消息。
+active_private:
+  enable: false
+
+# 以下类型留空表示不接管，直接走原协议。
+text: "qqbot"
+image: "qqbot"
+image_text: "qqbot"
+markdown: "qqbot"
+button: "qqbot"
+file: "onebot"
+record: ""
+video: ""
+node: "onebot"
+forward: "onebot"
+link: ""
+
+# 命令分流优先级高于消息类型分流。
+# match 可选 starts / contains / equals / regex，protocol 可选 qqbot / onebot / 留空。
+# protocol 留空表示命中后仍走原协议。
+command_rules: []

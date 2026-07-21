@@ -1,0 +1,13 @@
+{
+  "name": "QWild-Plugin",
+  "version": "0.1.0",
+  "description": "QQBot 和 OneBot v11 双协议接收控制与发送分流插件",
+  "type": "module",
+  "author": "eatyon",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eatyon/QWild-Plugin.git"
+  },
+  "license": "MIT",
+  "dependencies": {}
+}

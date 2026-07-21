@@ -1,0 +1,41 @@
+{{extend defaultLayout}}
+
+{{block 'css'}}
+<link rel="stylesheet" type="text/css" href="{{_res_path}}/help/index.css"/>
+<link rel="stylesheet" type="text/css" href="{{_res_path}}/status/index.css"/>
+{{/block}}
+
+{{block 'main'}}
+<div class="qwild-help qwild-status">
+  <div class="head-box">
+    <div class="title">{{helpCfg.title}}</div>
+    <div class="label">{{helpCfg.subTitle}}</div>
+  </div>
+
+  {{each statusGroups group}}
+  {{set len = group?.list?.length || 0}}
+  <div class="cont-box">
+    <div class="help-group">{{group.group}}</div>
+    {{if len > 0}}
+    <div class="status-table">
+      <div class="tr">
+        {{each group.list item idx}}
+        <div class="td">
+          <span class="status-name">{{item.title}}</span>
+          <span class="status-value status-{{item.type}}">{{item.value}}</span>
+        </div>
+        {{if idx % helpCfg.colCount === helpCfg.colCount - 1 && idx > 0 && idx < len - 1}}
+      </div>
+      <div class="tr">
+        {{/if}}
+        {{/each}}
+        <% for (let i = (len - 1) % helpCfg.colCount; i < helpCfg.colCount - 1; i++) { %>
+        <div class="td empty"></div>
+        <% } %>
+      </div>
+    </div>
+    {{/if}}
+  </div>
+  {{/each}}
+</div>
+{{/block}}

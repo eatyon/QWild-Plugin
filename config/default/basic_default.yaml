@@ -1,0 +1,17 @@
+# QWild 基础设置
+# 插件总开关。关闭后不接管接收阻断和发送分流。
+enable: true
+
+# 协议识别与机器人选择。
+# adapter 一般不用改；self_id 留空时自动选择在线的对应协议机器人。
+protocols:
+  qqbot:
+    adapter: "QQBot"
+    self_id: ""
+  onebot:
+    adapter: "OneBotv11"
+    self_id: ""
+
+# 离线旁路：开启后任一协议离线时，QWild 自动旁路，让云崽按原协议运行。
+runtime:
+  require_both_online: true

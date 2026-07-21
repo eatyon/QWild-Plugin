@@ -1,0 +1,11 @@
+# QWild 身份映射
+# 开启后缺少群聊或用户映射时，不跨协议分流，直接走原协议。
+unmapped_passthrough: true
+
+# 群聊映射：QQBot 群 ID 与 OBv11 群号的对应关系。
+# QQBot 群 ID 通常是 botid:groupid。
+groups: {}
+
+# 用户映射：QQBot 用户 ID 与 OBv11 QQ 的对应关系。
+# QQBot 用户 ID 通常是 botid:userid。
+users: {}

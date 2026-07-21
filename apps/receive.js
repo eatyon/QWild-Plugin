@@ -1,0 +1,110 @@
+import { config } from "../model/config.js"
+
+function idVariants(id) {
+  id = String(id || "")
+  const values = [id]
+  const index = id.indexOf(":")
+  if (index >= 0) values.push(id.slice(index + 1))
+  return values.filter(Boolean)
+}
+
+function listIncludes(list, id) {
+  const values = idVariants(id)
+  return (list || []).some(item => values.includes(String(item)))
+}
+
+function commandText(e) {
+  if (e._qwildCommandText) return e._qwildCommandText
+
+  const parts = []
+  const textParts = []
+  for (const item of e?.message || []) {
+    if (typeof item === "string") {
+      parts.push(item)
+      textParts.push(item)
+      continue
+    }
+    if (item?.type === "text") {
+      const text = item.text ?? item.data?.text ?? ""
+      parts.push(text)
+      textParts.push(text)
+    } else if (item?.type === "at") {
+      parts.push(`@${item.qq || item.user_id || item.data?.qq || item.data?.user_id || ""}`)
+    }
+  }
+
+  const fullText = parts.join("").trim()
+  const textOnly = textParts.join("").trim()
+  const rawText = String(e?.raw_message || "").trim()
+  const texts = [fullText, textOnly, rawText].filter(Boolean)
+  e._qwildCommandText = [...new Set(texts)]
+  return e._qwildCommandText
+}
+
+function matchCommand(e, rules) {
+  if (!rules?.length) return false
+  const texts = commandText(e)
+  return rules.some(rule => {
+    if (rule && typeof rule === "object") return matchCommandRule(e, rule, texts)
+    try {
+      const reg = new RegExp(String(rule))
+      return texts.some(text => reg.test(text))
+    } catch {
+      return texts.some(text => text.includes(String(rule)))
+    }
+  })
+}
+
+function matchCommandRule(e, rule, texts) {
+  const text = String(rule.text || "").trim()
+  if (!text) return false
+
+  switch (rule.match) {
+    case "contains":
+      return texts.some(item => item.includes(text))
+    case "equals":
+      return texts.some(item => item === text)
+    case "regex":
+      try {
+        const reg = new RegExp(text)
+        return texts.some(item => reg.test(item))
+      } catch {
+        return false
+      }
+    case "starts":
+    default:
+      return texts.some(item => item.startsWith(text))
+  }
+}
+
+export function shouldBlockReceive(e, protocol) {
+  const rule = config.receive[protocol]
+  if (!rule) return false
+
+  if (!rule.block) return false
+
+  let blocked = true
+  if (e?.isGroup || e?.message_type === "group") {
+    const hasGroupList = Boolean(rule.group_list?.length)
+    const groupHit = listIncludes(rule.group_list, e.group_id)
+    if (rule.group_mode === "white" && hasGroupList) {
+      if (!groupHit) return true
+      blocked = false
+    } else if (rule.group_mode === "black" && groupHit) {
+      return true
+    }
+  }
+
+  const hasUserList = Boolean(rule.user_list?.length)
+  const userHit = listIncludes(rule.user_list, e.user_id)
+  if (rule.user_mode === "white" && hasUserList) {
+    if (!userHit) return true
+    blocked = false
+  } else if (rule.user_mode === "black" && userHit) {
+    return true
+  }
+
+  if (blocked && matchCommand(e, rule.command_white_list)) return false
+
+  return blocked
+}
