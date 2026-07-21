@@ -12,7 +12,7 @@ import { isSendSuccess, targetProtocol } from "./message.js"
 
 const patchedFriendBots = new WeakSet()
 const patchedGroupBots = new WeakSet()
-const botApiPatchFlag = Symbol.for("QWild.Plugin.DirectBotApiPatched")
+const botApiPatchFlag = "__qwild_direct_bot_api_patched__"
 
 function protocolByBotId(botId) {
   const bot = Bot?.[botId] || Bot?.bots?.[botId]
