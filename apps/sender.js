@@ -1,4 +1,5 @@
 import { config } from "../model/config.js"
+import { findBot } from "./protocol.js"
 import { stripReply } from "./message.js"
 
 export class MissingIdentityMapError extends Error {
@@ -39,6 +40,16 @@ function reverseMappedValue(map, value) {
   return ""
 }
 
+async function sendQQBotGroup(e, msg, baseReply) {
+  const qqbotGroupId = reverseMappedValue(config.groups, e?.group_id)
+  if (!qqbotGroupId) throw new MissingIdentityMapError(e?.group_id)
+
+  const qqbot = findBot("qqbot")
+  if (!qqbot?.pickGroup) throw new Error("QQBot 未在线")
+
+  return qqbot.pickGroup(qqbotGroupId).sendMsg(stripReply(msg))
+}
+
 async function sendOneBotGroup(e, msg, baseReply) {
   const onebotGroupId = mappedValue(config.groups, qqbotGroupKey(e))
   if (!onebotGroupId) throw new MissingIdentityMapError(qqbotGroupKey(e))
@@ -69,8 +80,18 @@ export async function sendQQBotFriendByOneBotId(onebotUserId, msg, baseReply) {
   return qqbot.pickFriend(qqbotUserId).sendMsg(stripReply(msg))
 }
 
+async function sendQQBotFriend(e, msg, baseReply) {
+  return sendQQBotFriendByOneBotId(qqbotUserKey(e), msg, baseReply)
+}
+
 async function sendOneBotFriend(e, msg, baseReply) {
   return sendOneBotFriendByQQBotId(qqbotUserKey(e), msg, baseReply)
+}
+
+export async function sendQQBot(e, msg, baseReply) {
+  if (e?.isGroup || e?.message_type === "group") return sendQQBotGroup(e, msg, baseReply)
+  if (e?.isPrivate || e?.message_type === "private") return sendQQBotFriend(e, msg, baseReply)
+  throw new MissingIdentityMapError(e?.group_id || e?.user_id || "unknown")
 }
 
 export async function sendOneBot(e, msg, baseReply) {

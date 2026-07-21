@@ -10,6 +10,7 @@ const pendingBinds = {
   user: {},
 }
 
+const showIdMarks = new Map()
 const pluginVersion = pkg.version ? `<span class="version">${pkg.version}</span>` : ""
 
 function onOff(value) {
@@ -141,6 +142,41 @@ function findMapping(map, id) {
   const suffixHit = Object.entries(map || {}).find(([from]) => normalId(from) === id)
   if (suffixHit) return suffixHit
   return findByValue(map, id) || null
+}
+
+function hasCurrentMapping(e, protocol) {
+  if (protocol !== "onebot") return false
+  if (isGroup(e)) return Boolean(findByValue(config.groups, currentId(e, "group", protocol)))
+  if (isPrivate(e)) return Boolean(findByValue(config.users, currentId(e, "user", protocol)))
+  return false
+}
+
+function showIdKey(e, protocol) {
+  if (isGroup(e)) {
+    const onebotGroupId = protocol === "onebot"
+      ? currentId(e, "group", protocol)
+      : config.groups[currentId(e, "group", protocol)] || config.groups[normalId(currentId(e, "group", protocol))] || currentId(e, "group", protocol)
+    return `group:${onebotGroupId}`
+  }
+  const onebotUserId = protocol === "onebot"
+    ? currentId(e, "user", protocol)
+    : config.users[currentId(e, "user", protocol)] || config.users[normalId(currentId(e, "user", protocol))] || currentId(e, "user", protocol)
+  return `private:${onebotUserId}`
+}
+
+function markShowId(e, protocol) {
+  const key = showIdKey(e, protocol)
+  showIdMarks.set(key, Date.now())
+  setTimeout(() => showIdMarks.delete(key), 3000)
+}
+
+function hasRecentShowId(e, protocol) {
+  const time = showIdMarks.get(showIdKey(e, protocol))
+  return Boolean(time && Date.now() - time < 3000)
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 function addMapping(type, pair) {
@@ -316,7 +352,7 @@ export class qwildAdmin extends plugin {
       {
         group: "命令规则",
         list: [
-          { title: "命令白名单总数", value: `${countList(config.receive.qqbot.command_white_list) + countList(config.receive.onebot.command_white_list)} 条`, type: "route" },
+          { title: "命令放行规则", value: `${countList(config.receive.qqbot.command_allow_rules) + countList(config.receive.onebot.command_allow_rules)} 条`, type: "route" },
           { title: "命令分流", value: `${countList(config.send.command_rules)} 条`, type: "route" },
         ],
       },
@@ -354,38 +390,49 @@ export class qwildAdmin extends plugin {
     )
   }
 
-  showId() {
+  async showId() {
     const protocol = eventProtocol(this.e)
+    let replyCurrent = false
+    if (protocol === "qqbot") {
+      markShowId(this.e, protocol)
+    } else if (protocol === "onebot" && findBot("qqbot") && hasCurrentMapping(this.e, protocol)) {
+      await sleep(2000)
+      if (hasRecentShowId(this.e, protocol)) return true
+      replyCurrent = true
+    } else if (protocol === "onebot") {
+      replyCurrent = true
+    }
+
     const protocolName = protocol === "qqbot" ? "QQBot" : protocol === "onebot" ? "OBv11" : "未知"
     const lines = [`当前协议：${protocolName}`]
 
     if (isGroup(this.e)) lines.push(`群聊ID：${currentId(this.e, "group", protocol)}`)
     if (this.e?.user_id) lines.push(`用户ID：${currentId(this.e, "user", protocol)}`)
     const at = atIds(this.e, protocol)
-    if (at.length === 1) lines.push(`艾特ID：${at[0]}`)
-    else if (at.length > 1) lines.push(["艾特ID：", ...at].join("\n"))
+    if (at.length === 1) lines.push(`艾特对象ID：${at[0]}`)
+    else if (at.length > 1) lines.push(["艾特对象ID：", ...at].join("\n"))
 
-    return this.reply(lines.join("\n"), true)
+    return replyCurrent ? this.replyCurrent(lines.join("\n")) : this.reply(lines.join("\n"), true)
   }
 
   async setSend() {
     config.send.enable = setByAction(this.e.msg.match(/(开启|关闭)$/)?.[1])
-    return this.saveAndReply(`QWild 发送分流：已${onOff(config.send.enable)}`)
+    return this.saveAndReply(`QWild 发送分流已${onOff(config.send.enable)}`)
   }
 
   async setPlugin() {
     config.enable = setByAction(this.e.msg.match(/(开启|关闭)$/)?.[1])
-    return this.saveAndReply(`QWild 插件：已${onOff(config.enable)}`)
+    return this.saveAndReply(`QWild 总开关已${onOff(config.enable)}`)
   }
 
   async setQQBotBlock() {
     config.receive.qqbot.block = setByAction(this.e.msg.match(/(开启|关闭)$/)?.[1])
-    return this.saveAndReply(`QWild QQBot 接收阻断：已${onOff(config.receive.qqbot.block)}`)
+    return this.saveAndReply(`QWild QQBot 接收阻断已${onOff(config.receive.qqbot.block)}`)
   }
 
   async setOneBotBlock() {
     config.receive.onebot.block = setByAction(this.e.msg.match(/(开启|关闭)$/)?.[1])
-    return this.saveAndReply(`QWild OBv11 接收阻断：已${onOff(config.receive.onebot.block)}`)
+    return this.saveAndReply(`QWild OBv11 接收阻断已${onOff(config.receive.onebot.block)}`)
   }
 
   async bind(type) {
@@ -404,7 +451,7 @@ export class qwildAdmin extends plugin {
       }
       pendingBinds[type] = {}
       if (!addMapping(type, pair)) {
-        return this.replyCurrent(`${mapLabel(type)}映射已存在，请删除后重新添加`)
+        return this.replyCurrent(`${mapLabel(type)}映射已存在，请先删除后再绑定`)
       }
       await configSave()
       return this.replyCurrent(`${mapLabel(type)}映射已添加：${pair.onebot}`)
@@ -422,15 +469,15 @@ export class qwildAdmin extends plugin {
     if (!arg) return this.bind("user")
 
     const pair = this.parseCurrentUserArg(arg, "#QW绑定用户")
-    if (!pair || pair.error) return this.replyCurrent(pair?.error || "格式错误：#QW绑定用户 另一端用户ID")
-    if (!addMapping("user", pair)) return this.replyCurrent("用户映射已存在，请删除后重新添加")
+    if (!pair || pair.error) return this.replyCurrent(pair?.error || "格式错误\n示例：#QW绑定用户 另一端用户ID")
+    if (!addMapping("user", pair)) return this.replyCurrent("用户映射已存在，请先删除后再绑定")
     await configSave()
     return this.replyCurrent(`用户映射已添加：${pair.onebot}`)
   }
 
   cancelBind(type) {
     pendingBinds[type] = {}
-    return this.replyCurrent(`已取消${mapLabel(type)}绑定`)
+    return this.replyCurrent(`已取消${mapLabel(type)}绑定记录`)
   }
 
   cancelBindGroup() {
@@ -444,8 +491,8 @@ export class qwildAdmin extends plugin {
   async addGroupMap() {
     const arg = actionArg(this.e.msg, /^#[Qq][Ww]添加群聊映射/)
     const pair = parsePair(arg, "group")
-    if (!pair) return this.reply("格式错误：#QW添加群聊映射 QQBot群ID=OBv11群号", true)
-    if (!addMapping("group", pair)) return this.reply("群聊映射已存在，请删除后重新添加", true)
+    if (!pair) return this.reply("格式错误\n示例：#QW添加群聊映射 QQBot群ID=OBv11群号", true)
+    if (!addMapping("group", pair)) return this.reply("群聊映射已存在，请先删除后再绑定", true)
     await configSave()
     return this.reply(`群聊映射已添加：${pair.onebot}`, true)
   }
@@ -473,8 +520,8 @@ export class qwildAdmin extends plugin {
   async addUserMap() {
     const arg = actionArg(this.e.msg, /^#[Qq][Ww]添加用户映射/)
     const pair = this.parseUserAddArg(arg)
-    if (!pair || pair.error) return this.reply(pair?.error || "格式错误：#QW添加用户映射 QQBot用户ID=OBv11QQ", true)
-    if (!addMapping("user", pair)) return this.reply("用户映射已存在，请删除后重新添加", true)
+    if (!pair || pair.error) return this.reply(pair?.error || "格式错误\n示例：#QW添加用户映射 QQBot用户ID=OBv11QQ", true)
+    if (!addMapping("user", pair)) return this.reply("用户映射已存在，请先删除后再绑定", true)
     await configSave()
     return this.reply(`用户映射已添加：${pair.onebot}`, true)
   }
@@ -483,13 +530,13 @@ export class qwildAdmin extends plugin {
     const protocol = eventProtocol(this.e)
     let id = String(arg || "").trim()
     if (!id) {
-      if (type === "group" && !isGroup(this.e)) return this.reply("请在群聊中使用，或填写要删除的群 ID", true)
-      if (type === "user" && !isPrivate(this.e)) return this.reply("请在私聊中使用，或填写要删除的用户 ID", true)
+      if (type === "group" && !isGroup(this.e)) return this.reply("请在群聊中使用，或填写群 ID", true)
+      if (type === "user" && !isPrivate(this.e)) return this.reply("请在私聊中使用，或填写用户 ID", true)
       id = currentId(this.e, type, protocol)
     }
 
     const deleted = deleteMapping(type, id)
-    if (!deleted) return this.reply(`当前${mapLabel(type)}未配置映射`, true)
+    if (!deleted) return this.reply(`当前${mapLabel(type)}没有映射`, true)
     await configSave()
     return this.reply(`${mapLabel(type)}映射已删除：${deleted.onebot}`, true)
   }

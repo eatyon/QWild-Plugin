@@ -77,15 +77,28 @@ function matchCommandRule(e, rule, texts) {
   }
 }
 
+export function isReceiveForceAllowed(e) {
+  if (e?.isMaster === false) return false
+
+  return commandText(e).some(text => {
+    if (/^#[Qq][Ww]查看[Ii][Dd]$/.test(text)) return true
+    if (!e?.isGroup && e?.message_type !== "group") return false
+    return /^#[Qq][Ww](绑定群聊|取消绑定群聊)$/.test(text)
+  })
+}
+
 export function shouldBlockReceive(e, protocol) {
   const rule = config.receive[protocol]
   if (!rule) return false
 
   if (!rule.block) return false
 
-  let blocked = true
+  const hasGroupList = Boolean(rule.group_list?.length)
+  const hasUserList = Boolean(rule.user_list?.length)
+  const hasFilterList = hasGroupList || hasUserList
+  let blocked = !hasFilterList
+
   if (e?.isGroup || e?.message_type === "group") {
-    const hasGroupList = Boolean(rule.group_list?.length)
     const groupHit = listIncludes(rule.group_list, e.group_id)
     if (rule.group_mode === "white" && hasGroupList) {
       if (!groupHit) return true
@@ -95,7 +108,6 @@ export function shouldBlockReceive(e, protocol) {
     }
   }
 
-  const hasUserList = Boolean(rule.user_list?.length)
   const userHit = listIncludes(rule.user_list, e.user_id)
   if (rule.user_mode === "white" && hasUserList) {
     if (!userHit) return true
@@ -104,7 +116,7 @@ export function shouldBlockReceive(e, protocol) {
     return true
   }
 
-  if (blocked && matchCommand(e, rule.command_white_list)) return false
+  if (blocked && matchCommand(e, rule.command_allow_rules)) return false
 
   return blocked
 }

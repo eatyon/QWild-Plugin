@@ -19,7 +19,7 @@ const helpGroup = [
       },
       {
         title: "#QW查看ID",
-        desc: "查看当前群聊、用户、艾特对象 ID",
+        desc: "查看当前 ID，QQBot 优先，支持艾特对象",
       },
     ],
   },
@@ -49,11 +49,11 @@ const helpGroup = [
     list: [
       {
         title: "#QW绑定群聊",
-        desc: "自动绑定当前群的双端身份",
+        desc: "记录当前群，等待另一端上报并自动绑定",
       },
       {
         title: "#QW取消绑定群聊",
-        desc: "取消正在等待的群聊绑定",
+        desc: "取消正在等待的群聊绑定记录",
       },
       {
         title: "#QW添加群聊映射 A=B",

@@ -158,8 +158,8 @@ function receiveSchemas(protocol, title, adapterTitle) {
       },
     },
     {
-      field: `${protocol}CommandWhiteList`,
-      label: "命令白名单",
+      field: `${protocol}CommandAllowRules`,
+      label: "命令放行规则",
       component: "GSubForm",
       bottomHelpMessage: "命中后放行，不再阻断",
       componentProps: {
@@ -240,12 +240,12 @@ function applyData(data = {}) {
       config.users = applyMap(value)
       continue
     }
-    if (key === "qqbotCommandWhiteList") {
-      config.receive.qqbot.command_white_list = applyCommandList(value)
+    if (key === "qqbotCommandAllowRules") {
+      config.receive.qqbot.command_allow_rules = applyCommandList(value)
       continue
     }
-    if (key === "onebotCommandWhiteList") {
-      config.receive.onebot.command_white_list = applyCommandList(value)
+    if (key === "onebotCommandAllowRules") {
+      config.receive.onebot.command_allow_rules = applyCommandList(value)
       continue
     }
     if (key === "sendCommandRules") {
@@ -460,8 +460,8 @@ export function supportGuoba() {
           ...structuredClone(config),
           groupList: mappingList(config.groups),
           userList: mappingList(config.users),
-          qqbotCommandWhiteList: commandList(config.receive.qqbot.command_white_list),
-          onebotCommandWhiteList: commandList(config.receive.onebot.command_white_list),
+          qqbotCommandAllowRules: commandList(config.receive.qqbot.command_allow_rules),
+          onebotCommandAllowRules: commandList(config.receive.onebot.command_allow_rules),
           sendCommandRules: sendCommandList(config.send.command_rules),
         }
       },

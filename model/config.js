@@ -43,7 +43,7 @@ export const defaultConfig = {
   receive: {
     qqbot: {
       block: false,
-      command_white_list: [],
+      command_allow_rules: [],
       group_mode: "black",
       group_list: [],
       user_mode: "black",
@@ -51,7 +51,7 @@ export const defaultConfig = {
     },
     onebot: {
       block: false,
-      command_white_list: [],
+      command_allow_rules: [],
       group_mode: "black",
       group_list: [],
       user_mode: "black",
@@ -242,9 +242,13 @@ function normalizeReceive(protocol) {
   if (!config.receive[protocol] || typeof config.receive[protocol] !== "object") {
     config.receive[protocol] = structuredClone(defaults)
   }
-  config.receive[protocol] = mergeConfig(structuredClone(defaults), config.receive[protocol])
+  const source = config.receive[protocol]
+  config.receive[protocol] = structuredClone(defaults)
+  for (const key of Object.keys(defaults)) {
+    if (Object.hasOwn(source, key)) config.receive[protocol][key] = source[key]
+  }
   config.receive[protocol].block = normalizeBoolean(config.receive[protocol].block, defaults.block)
-  config.receive[protocol].command_white_list = normalizeCommandList(config.receive[protocol].command_white_list)
+  config.receive[protocol].command_allow_rules = normalizeCommandList(config.receive[protocol].command_allow_rules)
   config.receive[protocol].group_mode = normalizeMode(config.receive[protocol].group_mode)
   config.receive[protocol].group_list = normalizeList(config.receive[protocol].group_list)
   config.receive[protocol].user_mode = normalizeMode(config.receive[protocol].user_mode)
@@ -365,8 +369,8 @@ function validateConfig() {
   }
 
   validateCommandRules("命令分流", config.send?.command_rules, true)
-  validateCommandRules("QQBot 命令白名单", config.receive?.qqbot?.command_white_list)
-  validateCommandRules("OBv11 命令白名单", config.receive?.onebot?.command_white_list)
+  validateCommandRules("QQBot 命令放行规则", config.receive?.qqbot?.command_allow_rules)
+  validateCommandRules("OBv11 命令放行规则", config.receive?.onebot?.command_allow_rules)
   validateIdentityMap("group", config.groups)
   validateIdentityMap("user", config.users)
 }
@@ -463,23 +467,23 @@ runtime:
 
 function stringifyReceiveConfig() {
   return `# QWild 接收控制
-# block 为 true 时，该协议收到的消息不会进入云崽插件处理。
+# block 为 true 时启用接收控制；群聊和用户名单都为空时全局阻断。
 # group_mode / user_mode 可选 black 或 white。
 # black：黑名单模式，名单内阻断，名单外放行。
 # white：白名单模式，只放行名单内，名单外阻断。
 # group_list：群聊名单。QQBot 填 botid:groupid 或 groupid，OBv11 填 QQ 群号。
 # user_list：用户名单。QQBot 填 botid:userid 或 userid，OBv11 填 QQ 号。
-# command_white_list：通过群聊/用户过滤后，命中命令则放行，不再阻断。
+# command_allow_rules：命令放行规则，通过群聊/用户过滤后，命中命令则放行。
 qqbot:
   block: ${config.receive.qqbot.block}
-  command_white_list: ${stringifyCommandList(config.receive.qqbot.command_white_list)}
+  command_allow_rules: ${stringifyCommandList(config.receive.qqbot.command_allow_rules)}
   group_mode: ${quote(config.receive.qqbot.group_mode)}
   group_list: ${stringifyList(config.receive.qqbot.group_list)}
   user_mode: ${quote(config.receive.qqbot.user_mode)}
   user_list: ${stringifyList(config.receive.qqbot.user_list)}
 onebot:
   block: ${config.receive.onebot.block}
-  command_white_list: ${stringifyCommandList(config.receive.onebot.command_white_list)}
+  command_allow_rules: ${stringifyCommandList(config.receive.onebot.command_allow_rules)}
   group_mode: ${quote(config.receive.onebot.group_mode)}
   group_list: ${stringifyList(config.receive.onebot.group_list)}
   user_mode: ${quote(config.receive.onebot.user_mode)}

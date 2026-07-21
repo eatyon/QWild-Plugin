@@ -33,7 +33,24 @@ function hasLink(msg) {
 }
 
 function commandTexts(e) {
-  return [e?.msg, e?.raw_message]
+  const parts = []
+  const textParts = []
+  for (const item of e?.message || []) {
+    if (typeof item === "string") {
+      parts.push(item)
+      textParts.push(item)
+      continue
+    }
+    if (item?.type === "text") {
+      const text = item.text ?? item.data?.text ?? ""
+      parts.push(text)
+      textParts.push(text)
+    } else if (item?.type === "at") {
+      parts.push(`@${item.qq || item.user_id || item.data?.qq || item.data?.user_id || ""}`)
+    }
+  }
+
+  return [parts.join(""), textParts.join(""), e?.msg, e?.raw_message]
     .map(text => String(text || "").trim())
     .filter(Boolean)
     .filter((text, index, array) => array.indexOf(text) === index)
@@ -63,14 +80,14 @@ function matchCommandRule(texts, rule) {
 
 function commandProtocol(e) {
   const texts = commandTexts(e)
-  if (!texts.length) return ""
+  if (!texts.length) return null
   const rule = (config.send.command_rules || []).find(item => matchCommandRule(texts, item))
-  return rule?.protocol || ""
+  return rule ? rule.protocol || "" : null
 }
 
 export function targetProtocol(msg, e) {
-  const commandTarget = e ? commandProtocol(e) : ""
-  if (commandTarget) return commandTarget
+  const commandTarget = e ? commandProtocol(e) : null
+  if (commandTarget !== null) return commandTarget
 
   const types = messageTypes(msg)
   if (types.has("node")) return config.send.node
