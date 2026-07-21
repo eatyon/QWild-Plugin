@@ -10,7 +10,7 @@ let uping = false
 export class qwildUpdate extends plugin {
   constructor() {
     super({
-      name: "QWild 更新",
+      name: "QWildUpdate",
       dsc: "QWild-Plugin 更新",
       event: "message",
       priority: 10,
