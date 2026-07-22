@@ -301,7 +301,7 @@ export function supportGuoba() {
           field: "protocols.qqbot.self_id",
           label: "QQBot 机器人",
           component: "Select",
-          bottomHelpMessage: "选择要接管的 QQBot 账号",
+          bottomHelpMessage: "自动选择或指定要接管的 QQBot 账号",
           componentProps: {
             options: botOptions("qqbot"),
           },
@@ -310,7 +310,7 @@ export function supportGuoba() {
           field: "protocols.onebot.self_id",
           label: "OBv11 机器人",
           component: "Select",
-          bottomHelpMessage: "选择要接管的 OBv11 账号",
+          bottomHelpMessage: "自动选择或指定要接管的 OBv11 账号",
           componentProps: {
             options: botOptions("onebot"),
           },
@@ -404,13 +404,13 @@ export function supportGuoba() {
           field: "groupList",
           label: "群聊映射",
           component: "GSubForm",
-          bottomHelpMessage: "QQBot 群 ID 与 OBv11 群号的对应关系",
+          bottomHelpMessage: "完整 QQBot群ID 与 群号 的对应关系",
           componentProps: {
             multiple: true,
             schemas: [
               {
                 field: "qqbot",
-                label: "QQBot 群",
+                label: "QQBot群",
                 component: "Select",
                 required: true,
                 componentProps: {
@@ -419,7 +419,7 @@ export function supportGuoba() {
               },
               {
                 field: "onebot",
-                label: "OBv11 群号",
+                label: "群号",
                 component: "Select",
                 required: true,
                 componentProps: {
@@ -433,13 +433,13 @@ export function supportGuoba() {
           field: "userList",
           label: "用户映射",
           component: "GSubForm",
-          bottomHelpMessage: "QQBot 用户 ID 与 OBv11 QQ 的对应关系",
+          bottomHelpMessage: "完整 QQBot用户ID 与 QQ号 的对应关系",
           componentProps: {
             multiple: true,
             schemas: [
               {
                 field: "qqbot",
-                label: "QQBot 用户",
+                label: "QQBot用户",
                 component: "Select",
                 required: true,
                 componentProps: {
@@ -448,7 +448,7 @@ export function supportGuoba() {
               },
               {
                 field: "onebot",
-                label: "OBv11 QQ",
+                label: "QQ号",
                 component: "Select",
                 required: true,
                 componentProps: {

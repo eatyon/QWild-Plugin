@@ -20,7 +20,7 @@ export function eventProtocol(e) {
 
 export function findBot(protocol) {
   const selfId = config.protocols[protocol]?.self_id
-  if (selfId && Bot?.[selfId]) return Bot[selfId]
+  if (selfId) return Bot?.[selfId] || null
 
   for (const id of Bot?.uin || []) {
     const bot = Bot[id]

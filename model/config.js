@@ -346,12 +346,28 @@ function validateCommandRules(path, rules, checkProtocol = false) {
 function validateIdentityMap(type, map) {
   if (!map || typeof map !== "object" || Array.isArray(map)) return
   const label = type === "group" ? "群聊映射" : "用户映射"
-  const target = type === "group" ? "OBv11 群号" : "OBv11 QQ"
-  const source = type === "group" ? "QQBot 群 ID" : "QQBot 用户 ID"
+  const target = type === "group" ? "群号" : "QQ号"
+  const source = type === "group" ? "QQBot群ID" : "QQBot用户ID"
+  const seenByBot = new Map()
 
   for (const [from, to] of Object.entries(map)) {
-    if (!String(from || "").includes(":")) warn(`${label}格式异常：${source} 应为 botid:id，当前为 ${from}`)
-    if (!/^\d+$/.test(String(to || ""))) warn(`${label}格式异常：${target} 应为纯数字，当前为 ${to}`)
+    const sourceId = String(from || "").trim()
+    const targetId = String(to || "").trim()
+    const index = sourceId.indexOf(":")
+    const botId = index >= 0 ? sourceId.slice(0, index) : ""
+    const id = index >= 0 ? sourceId.slice(index + 1) : ""
+
+    if (index < 0 || !botId || !id) {
+      warn(`${label}格式异常：${source} 应为 BotID:ID，当前为 ${from}`)
+    } else {
+      if (!/^\d+$/.test(botId)) warn(`${label}格式异常：BotID 建议为纯数字，当前为 ${botId}`)
+      const key = `${botId}:${targetId}`
+      const previous = seenByBot.get(key)
+      if (previous) warn(`${label}配置疑似重复：同一 BotID 下多个 ${source} 映射到 ${targetId}：${previous}、${from}`)
+      else seenByBot.set(key, from)
+    }
+
+    if (!/^\d+$/.test(targetId)) warn(`${label}格式异常：${target} 应为纯数字，当前为 ${to}`)
   }
 }
 
@@ -476,8 +492,8 @@ function stringifyReceiveConfig() {
 # group_mode / user_mode 可选 black 或 white。
 # black：黑名单模式，名单内阻断，名单外放行。
 # white：白名单模式，只放行名单内，名单外阻断。
-# group_list：群聊名单。QQBot 填 botid:groupid 或 groupid，OBv11 填 QQ 群号。
-# user_list：用户名单。QQBot 填 botid:userid 或 userid，OBv11 填 QQ 号。
+# group_list：群聊名单。QQBot 填 BotID:GroupID，OBv11 填 QQ群号。
+# user_list：用户名单。QQBot 填 BotID:UserID，OBv11 填 QQ号。
 # command_allow_rules：命令放行规则，通过群聊/用户过滤后，命中命令则放行。
 qqbot:
   block: ${config.receive.qqbot.block}
@@ -536,12 +552,12 @@ function stringifyIdentityConfig() {
 # 开启后缺少群聊或用户映射时，不跨协议分流，直接走原协议。
 unmapped_passthrough: ${config.identity.unmapped_passthrough}
 
-# 群聊映射：QQBot 群 ID 与 OBv11 群号的对应关系。
-# QQBot 群 ID 通常是 botid:groupid。
+# 群聊映射：完整 QQBot群ID 与 群号 的对应关系。
+# QQBot群ID必须是 BotID:GroupID。
 groups: ${stringifyGroups(config.groups)}
 
-# 用户映射：QQBot 用户 ID 与 OBv11 QQ 的对应关系。
-# QQBot 用户 ID 通常是 botid:userid。
+# 用户映射：完整 QQBot用户ID 与 QQ号 的对应关系。
+# QQBot用户ID必须是 BotID:UserID。
 users: ${stringifyGroups(config.users)}
 `
 }

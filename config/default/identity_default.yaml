@@ -2,10 +2,10 @@
 # 开启后缺少群聊或用户映射时，不跨协议分流，直接走原协议。
 unmapped_passthrough: true
 
-# 群聊映射：QQBot 群 ID 与 OBv11 群号的对应关系。
-# QQBot 群 ID 通常是 botid:groupid。
+# 群聊映射：完整 QQBot群ID 与 群号 的对应关系。
+# QQBot群ID必须是 BotID:GroupID。
 groups: {}
 
-# 用户映射：QQBot 用户 ID 与 OBv11 QQ 的对应关系。
-# QQBot 用户 ID 通常是 botid:userid。
+# 用户映射：完整 QQBot用户ID 与 QQ号 的对应关系。
+# QQBot用户ID必须是 BotID:UserID。
 users: {}

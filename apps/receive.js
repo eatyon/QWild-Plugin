@@ -1,16 +1,8 @@
 import { config } from "../model/config.js"
 
-function idVariants(id) {
-  id = String(id || "")
-  const values = [id]
-  const index = id.indexOf(":")
-  if (index >= 0) values.push(id.slice(index + 1))
-  return values.filter(Boolean)
-}
-
 function listIncludes(list, id) {
-  const values = idVariants(id)
-  return (list || []).some(item => values.includes(String(item)))
+  id = String(id || "")
+  return (list || []).some(item => String(item) === id)
 }
 
 function commandText(e) {
@@ -81,7 +73,7 @@ export function isReceiveForceAllowed(e) {
   if (e?.isMaster === false) return false
 
   return commandText(e).some(text => {
-    if (/^#[Qq][Ww]查看[Ii][Dd]$/.test(text)) return true
+    if (/^#[Qq][Ww](?:查看|查询)[Ii][Dd]$/.test(text)) return true
     if (!e?.isGroup && e?.message_type !== "group") return false
     return /^#[Qq][Ww](绑定群聊|取消绑定群聊)$/.test(text)
   })

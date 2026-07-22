@@ -21,6 +21,10 @@ const helpGroup = [
         title: "#QW查看ID",
         desc: "查看当前 ID，QQBot 优先，支持艾特对象",
       },
+      {
+        title: "#QW搜索映射 ID",
+        desc: "搜索群聊和用户身份映射",
+      },
     ],
   },
   {
@@ -57,11 +61,11 @@ const helpGroup = [
       },
       {
         title: "#QW添加群聊映射 A=B",
-        desc: "手动添加 QQBot 群 ID 与 OBv11 群号映射",
+        desc: "手动添加完整 QQBot群ID 与 群号 映射",
       },
       {
         title: "#QW删除群聊映射",
-        desc: "删除当前群聊映射，可追加群 ID",
+        desc: "删除当前群聊映射，可追加完整 QQBot群ID 或 群号",
       },
     ],
   },
@@ -78,11 +82,11 @@ const helpGroup = [
       },
       {
         title: "#QW添加用户映射 A=B",
-        desc: "手动添加 QQBot 用户 ID 与 OBv11 QQ 映射",
+        desc: "手动添加完整 QQBot用户ID 与 QQ号 映射",
       },
       {
         title: "#QW删除用户映射",
-        desc: "删除当前用户映射，可追加用户 ID",
+        desc: "删除当前用户映射，可追加完整 QQBot用户ID 或 QQ号",
       },
     ],
   },

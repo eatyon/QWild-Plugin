@@ -1,13 +1,15 @@
 # QWild-Plugin
 
-适用于 TRSS-Yunzai 的 QQBot 和 OneBot v11 双协议接收控制与发送分流插件
+适用于 TRSS-Yunzai 的 QQBot 和 OneBot v11 双协议接收控制与发送分流插件。
+
+适合同时接入 QQBot 和 OBv11，并希望统一接收入口、按消息类型或命令选择发送协议的场景。
 
 ## 功能
 
 - 接收控制：可分别阻断 QQBot 或 OBv11 消息进入云崽插件处理
 - 发送分流：按消息类型指定 QQBot 或 OBv11 发送协议
 - 命令分流：按触发命令指定发送协议，优先级高于消息类型分流
-- 身份映射：支持 QQBot 群/用户 ID 与 OBv11 群号/QQ 的对应关系
+- 身份映射：支持 QQBot群ID与群号、QQBot用户ID与QQ号的对应关系
 - 未映射不分流：缺少映射时默认使用原协议发送
 - 支持主动消息接管、发送失败切换协议、离线旁路
 
@@ -56,9 +58,11 @@ plugins/QWild-Plugin/config/identity.yaml
 
 例如：OBv11 群聊黑名单填 `123456789` 时，只阻断该群，其它群和私聊正常进入云崽插件；命令放行规则可让阻断范围内的指定命令继续放行。
 
+QQBot名单请填写完整 `BotID:GroupID` 或 `BotID:UserID`，OBv11名单填写普通QQ群号 或 QQ号。`BotID` 用于区分不同 QQBot 机器人。
+
 ## 发送分流
 
-消息类型未指定协议时，表示 QWild 不接管该类型，直接使用原协议发送。
+消息类型未指定协议时，表示 QWild 不接管该类型，直接使用原协议发送。留空不是默认协议，而是不接管。
 
 可分流的消息类型：
 
@@ -100,62 +104,88 @@ command_rules:
 
 ```yaml
 groups:
-  "QQBot机器人ID:QQBot群ID": "OBv11群号"
+  "BotID:GroupID": "群号"
 ```
 
 用户映射格式：
 
 ```yaml
 users:
-  "QQBot机器人ID:QQBot用户ID": "OBv11QQ"
+  "BotID:UserID": "QQ号"
 ```
 
-所有 ID 都按字符串处理，不会转数字。
+QQBot侧必须填写完整 `BotID:GroupID` 或 `BotID:UserID`，另一侧填写普通QQ群号 或 QQ号。所有ID都按字符串处理，不会转数字。
+
+示例：
+
+```yaml
+groups:
+  "123456789:GROUP_ID": "987654321"
+
+users:
+  "123456789:USER_ID": "10001"
+```
 
 ## 命令
 
 所有命令仅主人可用，`QW` 支持大小写。
 
+基础命令：
+
 ```text
 #QW帮助
 #QW状态
 #QW查看ID
-#QW更新
-#QW强制更新
-#QW开启
-#QW关闭
-#QW分流开启
-#QW分流关闭
-#QW阻断QQBot开启
-#QW阻断QQBot关闭
-#QW阻断OBv11开启
-#QW阻断OBv11关闭
-#QW阻断OneBotv11开启
-#QW阻断OneBotv11关闭
+#QW搜索映射 ID
+```
 
-#QW绑定群聊
-#QW取消绑定群聊
-#QW添加群聊映射 QQBot群ID=OBv11群号
+开关命令：
+
+```text
+#QW开启 / #QW关闭
+#QW分流开启 / #QW分流关闭
+#QW阻断QQBot开启 / #QW阻断QQBot关闭
+#QW阻断OBv11开启 / #QW阻断OBv11关闭
+```
+
+群聊映射：
+
+```text
+#QW绑定群聊 / #QW取消绑定群聊
+#QW添加群聊映射 BotID:GroupID=群号
 #QW删除群聊映射
-#QW删除群聊映射 群ID
+#QW删除群聊映射 BotID:GroupID
+#QW删除群聊映射 群号
+```
 
+用户映射：
+
+```text
 #QW绑定用户
 #QW绑定用户 另一端用户ID
 #QW取消绑定用户
-#QW添加用户映射 QQBot用户ID=OBv11QQ
+#QW添加用户映射 BotID:UserID=QQ号
 #QW删除用户映射
-#QW删除用户映射 用户ID
+#QW删除用户映射 BotID:UserID
+#QW删除用户映射 QQ号
 ```
 
-QWild 总开关关闭时，管理命令仍可使用，方便重新开启插件。
+更新命令：
 
-接收阻断开启后，该协议收到的管理命令默认也会被阻断。
+```text
+#QW更新 / #QW强制更新
+```
 
-`#QW绑定群聊`、`#QW取消绑定群聊` 为双端绑定命令，QQBot 和 OBv11 接收阻断开启时会放行群聊。
+## 注意事项
+
+- QWild 总开关关闭时，管理命令仍可使用，方便重新开启插件
+- 接收阻断开启后，该协议收到的管理命令默认也会被阻断
+- QQBot侧ID必须写完整 `BotID:ID`，用于区分不同 QQBot 机器人
+- 添加映射时不允许覆盖，已存在需要先删除
+- 手动添加映射时，`=` 前后顺序可以反过来写
+- `#QW绑定群聊`、`#QW取消绑定群聊` 为双端绑定命令，QQBot 和 OBv11 接收阻断开启时会放行群聊
 
 `#QW查看ID` 在群聊和私聊中都会放行，QQBot 优先回复，OBv11 兜底回复。
-
-添加映射时不允许覆盖，已存在需要先删除。手动添加的 `=` 前后顺序可以反过来写。
 
 ## 鸣谢
 

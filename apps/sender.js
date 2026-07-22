@@ -14,38 +14,44 @@ export function isMissingIdentityMapError(err) {
   return err?.name === "MissingIdentityMapError"
 }
 
+function qqbotId(selfId, id) {
+  id = String(id || "")
+  if (!id || id.includes(":")) return id
+  return `${selfId}:${id}`
+}
+
+function botSelfId(bot) {
+  return String(bot?.uin || bot?.self_id || "")
+}
+
 function qqbotGroupKey(e) {
-  return String(e?.group_id || "")
+  return qqbotId(e?.self_id || e?.bot?.uin || e?.bot?.self_id, e?.group_id)
 }
 
 function qqbotUserKey(e) {
-  return String(e?.user_id || "")
+  return qqbotId(e?.self_id || e?.bot?.uin || e?.bot?.self_id, e?.user_id)
 }
 
 function mappedValue(map, key) {
   key = String(key || "")
-  if (map[key]) return map[key]
-  const index = key.indexOf(":")
-  if (index >= 0 && map[key.slice(index + 1)]) return map[key.slice(index + 1)]
-  return ""
+  return map[key] || ""
 }
 
-function reverseMappedValue(map, value) {
+function reverseMappedValue(map, value, botId = "") {
   value = String(value || "")
+  botId = String(botId || "")
   for (const [from, to] of Object.entries(map || {})) {
+    if (botId && !String(from).startsWith(`${botId}:`)) continue
     if (String(to) === value) return from
-    const index = String(to).indexOf(":")
-    if (index >= 0 && String(to).slice(index + 1) === value) return from
   }
   return ""
 }
 
 export async function sendQQBotGroupByOneBotId(onebotGroupId, msg, baseReply) {
-  const qqbotGroupId = reverseMappedValue(config.groups, onebotGroupId)
-  if (!qqbotGroupId) throw new MissingIdentityMapError(onebotGroupId)
-
   const qqbot = findBot("qqbot")
   if (!qqbot?.pickGroup) throw new Error("QQBot 未在线")
+  const qqbotGroupId = reverseMappedValue(config.groups, onebotGroupId, botSelfId(qqbot))
+  if (!qqbotGroupId) throw new MissingIdentityMapError(onebotGroupId)
 
   return qqbot.pickGroup(qqbotGroupId).sendMsg(stripReply(msg))
 }
@@ -71,17 +77,16 @@ export async function sendOneBotFriendByQQBotId(qqbotUserId, msg, baseReply) {
 }
 
 export async function sendQQBotFriendByOneBotId(onebotUserId, msg, baseReply) {
-  const qqbotUserId = reverseMappedValue(config.users, onebotUserId)
-  if (!qqbotUserId) throw new MissingIdentityMapError(onebotUserId)
-
   const qqbot = findBot("qqbot")
   if (!qqbot?.pickFriend) throw new Error("QQBot 未在线")
+  const qqbotUserId = reverseMappedValue(config.users, onebotUserId, botSelfId(qqbot))
+  if (!qqbotUserId) throw new MissingIdentityMapError(onebotUserId)
 
   return qqbot.pickFriend(qqbotUserId).sendMsg(stripReply(msg))
 }
 
 async function sendQQBotFriend(e, msg, baseReply) {
-  return sendQQBotFriendByOneBotId(qqbotUserKey(e), msg, baseReply)
+  return sendQQBotFriendByOneBotId(e?.user_id, msg, baseReply)
 }
 
 async function sendOneBotFriend(e, msg, baseReply) {
