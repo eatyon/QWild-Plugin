@@ -108,7 +108,6 @@ function commandTextSchema() {
     label: "命令内容",
     component: "Select",
     required: true,
-    bottomHelpMessage: "输入后按回车添加，可填写多个",
     componentProps: {
       mode: "tags",
       options: [],
@@ -156,28 +155,10 @@ function receiveSchemas(protocol, title, adapterTitle) {
       bottomHelpMessage: `开启后 ${displayTitle} 消息不进入云崽插件处理`,
     },
     {
-      field: `receive.${protocol}.group_mode`,
-      label: "群聊过滤模式",
-      component: "Select",
-      bottomHelpMessage: "黑名单：名单内阻断；白名单：只放行名单内",
-      componentProps: {
-        options: modeOptions(),
-      },
-    },
-    {
-      field: `receive.${protocol}.group_list`,
-      label: "群聊名单",
-      component: "Select",
-      componentProps: {
-        mode: "tags",
-        options: groupOptions(protocol),
-      },
-    },
-    {
       field: `receive.${protocol}.user_mode`,
       label: "用户过滤模式",
       component: "Select",
-      bottomHelpMessage: "黑名单：名单内阻断；白名单：只放行名单内",
+      bottomHelpMessage: "黑名单：名单内阻断；白名单：配置名单后只允许名单内继续判断",
       componentProps: {
         options: modeOptions(),
       },
@@ -192,10 +173,28 @@ function receiveSchemas(protocol, title, adapterTitle) {
       },
     },
     {
+      field: `receive.${protocol}.group_mode`,
+      label: "群聊过滤模式",
+      component: "Select",
+      bottomHelpMessage: "黑名单：名单内阻断；白名单：配置名单后只允许名单内继续判断",
+      componentProps: {
+        options: modeOptions(),
+      },
+    },
+    {
+      field: `receive.${protocol}.group_list`,
+      label: "群聊名单",
+      component: "Select",
+      componentProps: {
+        mode: "tags",
+        options: groupOptions(protocol),
+      },
+    },
+    {
       field: `${protocol}CommandAllowRules`,
       label: "命令放行规则",
       component: "GSubForm",
-      bottomHelpMessage: "命中后放行，不再阻断",
+      bottomHelpMessage: "会话被阻断时，命中则放行",
       componentProps: {
         multiple: true,
         schemas: [

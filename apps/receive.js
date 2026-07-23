@@ -81,30 +81,28 @@ export function shouldBlockReceive(e, protocol) {
 
   if (!rule.block) return false
 
-  const hasGroupList = Boolean(rule.group_list?.length)
+  let blocked = false
+
   const hasUserList = Boolean(rule.user_list?.length)
-  const hasFilterList = hasGroupList || hasUserList
-  let blocked = !hasFilterList
+  const userHit = listIncludes(rule.user_list, e.user_id)
+  if (rule.user_mode === "white" && hasUserList) {
+    if (!userHit) blocked = true
+  } else if (rule.user_mode === "black" && userHit) {
+    blocked = true
+  }
 
   if (e?.isGroup || e?.message_type === "group") {
+    const hasGroupList = Boolean(rule.group_list?.length)
     const groupHit = listIncludes(rule.group_list, e.group_id)
     if (rule.group_mode === "white" && hasGroupList) {
-      if (!groupHit) return true
-      blocked = false
+      if (!groupHit) blocked = true
     } else if (rule.group_mode === "black" && groupHit) {
-      return true
+      blocked = true
     }
   }
 
-  const userHit = listIncludes(rule.user_list, e.user_id)
-  if (rule.user_mode === "white" && hasUserList) {
-    if (!userHit) return true
-    blocked = false
-  } else if (rule.user_mode === "black" && userHit) {
-    return true
-  }
+  if (!blocked) return false
+  if (matchCommand(e, rule.command_allow_rules)) return false
 
-  if (blocked && matchCommand(e, rule.command_allow_rules)) return false
-
-  return blocked
+  return true
 }

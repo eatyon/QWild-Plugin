@@ -44,18 +44,18 @@ export const defaultConfig = {
     qqbot: {
       block: false,
       command_allow_rules: [],
-      group_mode: "black",
-      group_list: [],
-      user_mode: "black",
+      user_mode: "white",
       user_list: [],
+      group_mode: "white",
+      group_list: [],
     },
     onebot: {
       block: false,
       command_allow_rules: [],
-      group_mode: "black",
-      group_list: [],
-      user_mode: "black",
+      user_mode: "white",
       user_list: [],
+      group_mode: "white",
+      group_list: [],
     },
   },
   runtime: {
@@ -211,7 +211,6 @@ function parseSimpleYaml(text) {
     if (lines[index + 1]?.indent > lines[index].indent) {
       const [child, next] = parseBlock(index + 1, lines[index + 1].indent)
       target[key] = child
-      lines[index]._next = next
       return
     }
     target[key] = {}
@@ -557,27 +556,27 @@ runtime:
 
 function stringifyReceiveConfig() {
   return `# QWild 接收控制
-# block 为 true 时启用接收控制；群聊和用户名单都为空时全局阻断。
+# block 为 true 时启用接收控制；命中用户或群聊阻断范围后，可通过命令放行规则穿透。
 # group_mode / user_mode 可选 black 或 white。
-# black：黑名单模式，名单内阻断，名单外放行。
-# white：白名单模式，只放行名单内，名单外阻断。
-# group_list：群聊名单。QQBot 填 BotID:GroupID，OBv11 填 QQ群号。
+# black：黑名单模式，名单内阻断。
+# white：白名单模式，配置名单后只允许名单内继续判断。
 # user_list：用户名单。QQBot 填 BotID:UserID，OBv11 填 QQ号。
-# command_allow_rules：命令放行规则，通过群聊/用户过滤后，命中任一 texts 命令则放行。
+# group_list：群聊名单。QQBot 填 BotID:GroupID，OBv11 填 QQ群号。
+# command_allow_rules：命令放行规则，会话被阻断时，命中任一 texts 命令则放行。
 qqbot:
   block: ${config.receive.qqbot.block}
-  command_allow_rules: ${stringifyCommandRules(config.receive.qqbot.command_allow_rules)}
-  group_mode: ${quote(config.receive.qqbot.group_mode)}
-  group_list: ${stringifyList(config.receive.qqbot.group_list)}
   user_mode: ${quote(config.receive.qqbot.user_mode)}
   user_list: ${stringifyList(config.receive.qqbot.user_list)}
+  group_mode: ${quote(config.receive.qqbot.group_mode)}
+  group_list: ${stringifyList(config.receive.qqbot.group_list)}
+  command_allow_rules: ${stringifyCommandRules(config.receive.qqbot.command_allow_rules)}
 onebot:
   block: ${config.receive.onebot.block}
-  command_allow_rules: ${stringifyCommandRules(config.receive.onebot.command_allow_rules)}
-  group_mode: ${quote(config.receive.onebot.group_mode)}
-  group_list: ${stringifyList(config.receive.onebot.group_list)}
   user_mode: ${quote(config.receive.onebot.user_mode)}
   user_list: ${stringifyList(config.receive.onebot.user_list)}
+  group_mode: ${quote(config.receive.onebot.group_mode)}
+  group_list: ${stringifyList(config.receive.onebot.group_list)}
+  command_allow_rules: ${stringifyCommandRules(config.receive.onebot.command_allow_rules)}
 `
 }
 
