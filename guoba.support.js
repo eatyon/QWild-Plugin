@@ -394,7 +394,7 @@ export function supportGuoba() {
         sendSchema("send.node", "合并转发消息", "onebot"),
         sendSchema("send.markdown", "Markdown 消息"),
         sendSchema("send.forward", "Forward 消息", "onebot"),
-        sendSchema("send.link", "链接消息", "onebot", "普通文本中包含 http/https 链接时使用"),
+        sendSchema("send.link", "链接消息", "onebot", "文本中包含 http/https 或 QQ 易识别链接格式时命中，如 d.Mov、1.cn"),
         sendSchema("send.default", "未知类型", "onebot", "无法识别具体类型时使用，不指定则走原协议"),
         {
           component: "SOFT_GROUP_BEGIN",
