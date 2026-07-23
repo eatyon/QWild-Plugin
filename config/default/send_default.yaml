@@ -26,6 +26,6 @@ forward: "onebot"
 link: ""
 
 # 命令分流优先级高于消息类型分流。
-# match 可选 starts / contains / equals / regex，protocol 可选 qqbot / onebot / 留空。
+# match 可选 starts / contains / equals / regex，texts 可填写多个命令，protocol 可选 qqbot / onebot / 留空。
 # protocol 留空表示命中后仍走原协议。
 command_rules: []

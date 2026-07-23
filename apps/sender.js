@@ -83,7 +83,7 @@ function mapAtMsg(msg, protocol, botId = "") {
   return next
 }
 
-export async function sendQQBotGroupByOneBotId(onebotGroupId, msg, baseReply) {
+export async function sendQQBotGroupByOneBotId(onebotGroupId, msg) {
   const qqbot = findBot("qqbot")
   if (!qqbot?.pickGroup) throw new Error("QQBot 未在线")
   const qqbotGroupId = reverseMappedValue(config.groups, onebotGroupId, botSelfId(qqbot))
@@ -94,7 +94,7 @@ export async function sendQQBotGroupByOneBotId(onebotGroupId, msg, baseReply) {
   return recordRoutedMessage(ret, group)
 }
 
-export async function sendOneBotGroupByQQBotId(qqbotGroupId, msg, baseReply) {
+export async function sendOneBotGroupByQQBotId(qqbotGroupId, msg) {
   const onebotGroupId = mappedValue(config.groups, qqbotGroupId)
   if (!onebotGroupId) throw new MissingIdentityMapError(qqbotGroupId)
 
@@ -106,7 +106,7 @@ export async function sendOneBotGroupByQQBotId(qqbotGroupId, msg, baseReply) {
   return recordRoutedMessage(ret, group)
 }
 
-export async function sendOneBotFriendByQQBotId(qqbotUserId, msg, baseReply) {
+export async function sendOneBotFriendByQQBotId(qqbotUserId, msg) {
   const onebotUserId = mappedValue(config.users, qqbotUserId)
   if (!onebotUserId) throw new MissingIdentityMapError(qqbotUserId)
 
@@ -118,7 +118,7 @@ export async function sendOneBotFriendByQQBotId(qqbotUserId, msg, baseReply) {
   return recordRoutedMessage(ret, friend)
 }
 
-export async function sendQQBotFriendByOneBotId(onebotUserId, msg, baseReply) {
+export async function sendQQBotFriendByOneBotId(onebotUserId, msg) {
   const qqbot = findBot("qqbot")
   if (!qqbot?.pickFriend) throw new Error("QQBot 未在线")
   const qqbotUserId = reverseMappedValue(config.users, onebotUserId, botSelfId(qqbot))
@@ -129,22 +129,22 @@ export async function sendQQBotFriendByOneBotId(onebotUserId, msg, baseReply) {
   return recordRoutedMessage(ret, friend)
 }
 
-async function sendQQBotFriend(e, msg, baseReply) {
-  return sendQQBotFriendByOneBotId(e?.user_id, msg, baseReply)
+async function sendQQBotFriend(e, msg) {
+  return sendQQBotFriendByOneBotId(e?.user_id, msg)
 }
 
-async function sendOneBotFriend(e, msg, baseReply) {
-  return sendOneBotFriendByQQBotId(qqbotUserKey(e), msg, baseReply)
+async function sendOneBotFriend(e, msg) {
+  return sendOneBotFriendByQQBotId(qqbotUserKey(e), msg)
 }
 
-export async function sendQQBot(e, msg, baseReply) {
-  if (e?.isGroup || e?.message_type === "group") return sendQQBotGroupByOneBotId(e?.group_id, msg, baseReply)
-  if (e?.isPrivate || e?.message_type === "private") return sendQQBotFriend(e, msg, baseReply)
+export async function sendQQBot(e, msg) {
+  if (e?.isGroup || e?.message_type === "group") return sendQQBotGroupByOneBotId(e?.group_id, msg)
+  if (e?.isPrivate || e?.message_type === "private") return sendQQBotFriend(e, msg)
   throw new MissingIdentityMapError(e?.group_id || e?.user_id || "unknown")
 }
 
-export async function sendOneBot(e, msg, baseReply) {
-  if (e?.isGroup || e?.message_type === "group") return sendOneBotGroupByQQBotId(qqbotGroupKey(e), msg, baseReply)
-  if (e?.isPrivate || e?.message_type === "private") return sendOneBotFriend(e, msg, baseReply)
+export async function sendOneBot(e, msg) {
+  if (e?.isGroup || e?.message_type === "group") return sendOneBotGroupByQQBotId(qqbotGroupKey(e), msg)
+  if (e?.isPrivate || e?.message_type === "private") return sendOneBotFriend(e, msg)
   throw new MissingIdentityMapError(e?.group_id || e?.user_id || "unknown")
 }

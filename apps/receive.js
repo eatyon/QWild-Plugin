@@ -36,36 +36,32 @@ function commandText(e) {
 function matchCommand(e, rules) {
   if (!rules?.length) return false
   const texts = commandText(e)
-  return rules.some(rule => {
-    if (rule && typeof rule === "object") return matchCommandRule(e, rule, texts)
-    try {
-      const reg = new RegExp(String(rule))
-      return texts.some(text => reg.test(text))
-    } catch {
-      return texts.some(text => text.includes(String(rule)))
-    }
-  })
+  return rules.some(rule => matchCommandRule(rule, texts))
 }
 
-function matchCommandRule(e, rule, texts) {
-  const text = String(rule.text || "").trim()
-  if (!text) return false
+function matchCommandRule(rule, texts) {
+  const patterns = Array.isArray(rule?.texts)
+    ? rule.texts.map(item => String(item || "").trim()).filter(Boolean)
+    : []
+  if (!patterns.length) return false
 
   switch (rule.match) {
     case "contains":
-      return texts.some(item => item.includes(text))
+      return patterns.some(pattern => texts.some(item => item.includes(pattern)))
     case "equals":
-      return texts.some(item => item === text)
+      return patterns.some(pattern => texts.some(item => item === pattern))
     case "regex":
-      try {
-        const reg = new RegExp(text)
-        return texts.some(item => reg.test(item))
-      } catch {
-        return false
-      }
+      return patterns.some(pattern => {
+        try {
+          const reg = new RegExp(pattern)
+          return texts.some(item => reg.test(item))
+        } catch {
+          return false
+        }
+      })
     case "starts":
     default:
-      return texts.some(item => item.startsWith(text))
+      return patterns.some(pattern => texts.some(item => item.startsWith(pattern)))
   }
 }
 

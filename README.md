@@ -88,7 +88,9 @@ default     未知类型
 ```yaml
 command_rules:
   - match: "starts"
-    text: "#QW帮助"
+    texts:
+      - "#帮助"
+      - "#菜单"
     protocol: "qqbot"
 ```
 

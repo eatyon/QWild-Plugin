@@ -29,10 +29,6 @@ export function findBot(protocol) {
   return null
 }
 
-export function bothProtocolsOnline() {
-  return Boolean(findBot("qqbot") && findBot("onebot"))
-}
-
 function protocolStatus() {
   return {
     qqbot: Boolean(findBot("qqbot")),

@@ -212,16 +212,16 @@ function normalizeList(value) {
 }
 
 function normalizeCommandList(value) {
-  if (!Array.isArray(value)) return normalizeList(value)
+  if (!Array.isArray(value)) return []
   return value
     .map(item => {
-      if (!item || typeof item !== "object") return String(item || "").trim()
+      if (!item || typeof item !== "object") return null
       return {
         match: ["starts", "contains", "equals", "regex"].includes(item.match) ? item.match : "starts",
-        text: String(item.text || item.pattern || "").trim(),
+        texts: normalizeList(item.texts),
       }
     })
-    .filter(item => (typeof item === "string" ? item : item.text))
+    .filter(item => item?.texts?.length)
 }
 
 function normalizeSendCommandRules(value) {
@@ -229,10 +229,10 @@ function normalizeSendCommandRules(value) {
   return value
     .map(item => ({
       match: ["starts", "contains", "equals", "regex"].includes(item?.match) ? item.match : "starts",
-      text: String(item?.text || item?.pattern || "").trim(),
+      texts: normalizeList(item?.texts),
       protocol: normalizeOptionalProtocol(item?.protocol),
     }))
-    .filter(item => item.text)
+    .filter(item => item.texts.length)
 }
 
 function normalizeReceive(protocol) {
@@ -332,10 +332,10 @@ function validateCommandRules(path, rules, checkProtocol = false) {
     if (!rule || typeof rule !== "object") return
     const label = `${path}[${index}]`
     const match = String(rule.match || "starts").trim()
-    const text = String(rule.text || rule.pattern || "").trim()
+    const texts = normalizeList(rule.texts)
     if (!validMatches.includes(match)) warn(`${label} 匹配方式无效：${rule.match}`)
-    if (!text) warn(`${label} 命令内容为空`)
-    if (match === "regex") validateRegex(label, text)
+    if (!texts.length) warn(`${label} 命令内容为空`)
+    if (match === "regex") texts.forEach((text, textIndex) => validateRegex(`${label}.texts[${textIndex}]`, text))
     if (checkProtocol) validateProtocolField(`${label}.protocol`, rule.protocol)
   })
 }
@@ -491,7 +491,7 @@ function stringifyReceiveConfig() {
 # white：白名单模式，只放行名单内，名单外阻断。
 # group_list：群聊名单。QQBot 填 BotID:GroupID，OBv11 填 QQ群号。
 # user_list：用户名单。QQBot 填 BotID:UserID，OBv11 填 QQ号。
-# command_allow_rules：命令放行规则，通过群聊/用户过滤后，命中命令则放行。
+# command_allow_rules：命令放行规则，通过群聊/用户过滤后，命中任一 texts 命令则放行。
 qqbot:
   block: ${config.receive.qqbot.block}
   command_allow_rules: ${stringifyCommandList(config.receive.qqbot.command_allow_rules)}
@@ -538,7 +538,7 @@ forward: ${quote(config.send.forward)}
 link: ${quote(config.send.link)}
 
 # 命令分流优先级高于消息类型分流。
-# match 可选 starts / contains / equals / regex，protocol 可选 qqbot / onebot / 留空。
+# match 可选 starts / contains / equals / regex，texts 可填写多个命令，protocol 可选 qqbot / onebot / 留空。
 # protocol 留空表示命中后仍走原协议。
 command_rules: ${JSON.stringify(config.send.command_rules || [])}
 `

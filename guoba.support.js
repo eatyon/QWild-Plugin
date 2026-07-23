@@ -27,14 +27,27 @@ function botOptions(protocol) {
   ]
 }
 
+function protocolBotIds(protocol) {
+  const ids = Array.from(globalThis.Bot?.uin || [])
+  const rule = config.protocols[protocol] || {}
+  const selected = String(rule.self_id || "")
+  if (selected) return ids.includes(selected) ? [selected] : []
+  return ids.filter(id => adapterName(globalThis.Bot?.[id]) === rule.adapter)
+}
+
 function groupOptions(protocol) {
   const options = []
-  for (const id of globalThis.Bot?.uin || []) {
+  const seen = new Set()
+  for (const id of protocolBotIds(protocol)) {
     const bot = globalThis.Bot?.[id]
-    if (protocol && adapterName(bot) !== config.protocols[protocol]?.adapter) continue
     const map = bot?.gl || bot?.getGroupMap?.()
     if (!map?.entries) continue
     for (const [groupId, item] of map.entries()) {
+      const value = String(groupId ?? "")
+      if (protocol === "onebot") {
+        if (seen.has(value)) continue
+        seen.add(value)
+      }
       options.push(makeOption(item?.group_name || item?.name, groupId))
     }
   }
@@ -43,12 +56,17 @@ function groupOptions(protocol) {
 
 function userOptions(protocol) {
   const options = []
-  for (const id of globalThis.Bot?.uin || []) {
+  const seen = new Set()
+  for (const id of protocolBotIds(protocol)) {
     const bot = globalThis.Bot?.[id]
-    if (protocol && adapterName(bot) !== config.protocols[protocol]?.adapter) continue
     const map = bot?.fl || bot?.getFriendMap?.()
     if (!map?.entries) continue
     for (const [userId, item] of map.entries()) {
+      const value = String(userId ?? "")
+      if (protocol === "onebot") {
+        if (seen.has(value)) continue
+        seen.add(value)
+      }
       options.push(makeOption(item?.nickname || item?.name || item?.remark, userId))
     }
   }
@@ -60,26 +78,41 @@ function mappingList(source = {}) {
 }
 
 function commandList(list = []) {
-  return (Array.isArray(list) ? list : []).map(item => {
-    if (item && typeof item === "object") {
-      return {
-        match: item.match || "starts",
-        text: String(item.text || item.pattern || ""),
-      }
-    }
-    return {
-      match: "regex",
-      text: String(item || ""),
-    }
-  })
+  return (Array.isArray(list) ? list : []).map(item => ({
+    match: item?.match || "starts",
+    texts: Array.isArray(item?.texts)
+      ? item.texts.map(text => String(text || "").trim()).filter(Boolean)
+      : [],
+  }))
 }
 
 function sendCommandList(list = []) {
   return (Array.isArray(list) ? list : []).map(item => ({
     match: item?.match || "starts",
-    text: String(item?.text || item?.pattern || ""),
+    texts: Array.isArray(item?.texts)
+      ? item.texts.map(text => String(text || "").trim()).filter(Boolean)
+      : [],
     protocol: item?.protocol || "",
   }))
+}
+
+function commandTexts(value) {
+  return (Array.isArray(value) ? value : [])
+    .map(text => String(text || "").trim())
+    .filter(Boolean)
+}
+
+function commandTextSchema() {
+  return {
+    field: "texts",
+    label: "命令内容",
+    component: "Select",
+    required: true,
+    componentProps: {
+      mode: "tags",
+      options: [],
+    }
+  }
 }
 
 function modeOptions() {
@@ -174,12 +207,7 @@ function receiveSchemas(protocol, title, adapterTitle) {
               options: matchOptions(),
             },
           },
-          {
-            field: "text",
-            label: "命令内容",
-            component: "Input",
-            required: true,
-          },
+          commandTextSchema(),
         ],
       },
     },
@@ -211,23 +239,23 @@ function applyMap(value) {
 function applyCommandList(value) {
   return (Array.isArray(value) ? value : [])
     .map(item => {
-      if (!item || typeof item !== "object") return String(item || "").trim()
+      if (!item || typeof item !== "object") return null
       return {
         match: ["starts", "contains", "equals", "regex"].includes(item.match) ? item.match : "starts",
-        text: String(item.text || item.pattern || "").trim(),
+        texts: commandTexts(item.texts),
       }
     })
-    .filter(item => (typeof item === "string" ? item : item.text))
+    .filter(item => item?.texts?.length)
 }
 
 function applySendCommandList(value) {
   return (Array.isArray(value) ? value : [])
     .map(item => ({
       match: ["starts", "contains", "equals", "regex"].includes(item?.match) ? item.match : "starts",
-      text: String(item?.text || item?.pattern || "").trim(),
+      texts: commandTexts(item?.texts),
       protocol: ["", "qqbot", "onebot"].includes(item?.protocol) ? item.protocol : "",
     }))
-    .filter(item => item.text)
+    .filter(item => item.texts.length)
 }
 
 function applyData(data = {}) {
@@ -356,12 +384,7 @@ export function supportGuoba() {
                   options: matchOptions(),
                 },
               },
-              {
-                field: "text",
-                label: "命令内容",
-                component: "Input",
-                required: true,
-              },
+              commandTextSchema(),
               {
                 field: "protocol",
                 label: "发送协议",
@@ -408,6 +431,7 @@ export function supportGuoba() {
                 component: "Select",
                 required: true,
                 componentProps: {
+                  mode: "tags",
                   options: groupOptions("qqbot"),
                 },
               },
@@ -417,6 +441,7 @@ export function supportGuoba() {
                 component: "Select",
                 required: true,
                 componentProps: {
+                  mode: "tags",
                   options: groupOptions("onebot"),
                 },
               },
@@ -437,6 +462,7 @@ export function supportGuoba() {
                 component: "Select",
                 required: true,
                 componentProps: {
+                  mode: "tags",
                   options: userOptions("qqbot"),
                 },
               },
@@ -446,6 +472,7 @@ export function supportGuoba() {
                 component: "Select",
                 required: true,
                 componentProps: {
+                  mode: "tags",
                   options: userOptions("onebot"),
                 },
               },

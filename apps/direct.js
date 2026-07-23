@@ -43,12 +43,12 @@ async function routeDirectSend(protocol, type, key, id, msg, originalSendMsg) {
     let ret
     if (type === "group") {
       ret = protocol === "qqbot"
-        ? await sendOneBotGroupByQQBotId(key, msg, originalSendMsg)
-        : await sendQQBotGroupByOneBotId(id, msg, originalSendMsg)
+        ? await sendOneBotGroupByQQBotId(key, msg)
+        : await sendQQBotGroupByOneBotId(id, msg)
     } else {
       ret = protocol === "qqbot"
-        ? await sendOneBotFriendByQQBotId(key, msg, originalSendMsg)
-        : await sendQQBotFriendByOneBotId(id, msg, originalSendMsg)
+        ? await sendOneBotFriendByQQBotId(key, msg)
+        : await sendQQBotFriendByOneBotId(id, msg)
     }
 
     if (isSendSuccess(ret) || !config.send.failover) return ret

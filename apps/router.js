@@ -32,8 +32,8 @@ function patchReply(e) {
 
     try {
       const ret = target === "onebot"
-        ? await sendOneBot(e, msg, baseReply)
-        : await sendQQBot(e, msg, baseReply)
+        ? await sendOneBot(e, msg)
+        : await sendQQBot(e, msg)
       if (isSendSuccess(ret)) {
         scheduleRecall(ret, data?.recallMsg)
         return ret
