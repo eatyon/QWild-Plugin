@@ -1,6 +1,7 @@
 import { config } from "../model/config.js"
 import { findBot } from "./protocol.js"
 import { stripReply } from "./message.js"
+import { recordRoutedMessage } from "./recall.js"
 
 export class MissingIdentityMapError extends Error {
   constructor(id) {
@@ -88,7 +89,9 @@ export async function sendQQBotGroupByOneBotId(onebotGroupId, msg, baseReply) {
   const qqbotGroupId = reverseMappedValue(config.groups, onebotGroupId, botSelfId(qqbot))
   if (!qqbotGroupId) throw new MissingIdentityMapError(onebotGroupId)
 
-  return qqbot.pickGroup(qqbotGroupId).sendMsg(stripReply(mapAtMsg(msg, "qqbot", botSelfId(qqbot))))
+  const group = qqbot.pickGroup(qqbotGroupId)
+  const ret = await group.sendMsg(stripReply(mapAtMsg(msg, "qqbot", botSelfId(qqbot))))
+  return recordRoutedMessage(ret, group)
 }
 
 export async function sendOneBotGroupByQQBotId(qqbotGroupId, msg, baseReply) {
@@ -98,7 +101,9 @@ export async function sendOneBotGroupByQQBotId(qqbotGroupId, msg, baseReply) {
   const onebot = findBot("onebot")
   if (!onebot?.pickGroup) throw new Error("OneBotv11 未在线")
 
-  return onebot.pickGroup(onebotGroupId).sendMsg(stripReply(mapAtMsg(msg, "onebot", String(qqbotGroupId).split(":")[0])))
+  const group = onebot.pickGroup(onebotGroupId)
+  const ret = await group.sendMsg(stripReply(mapAtMsg(msg, "onebot", String(qqbotGroupId).split(":")[0])))
+  return recordRoutedMessage(ret, group)
 }
 
 export async function sendOneBotFriendByQQBotId(qqbotUserId, msg, baseReply) {
@@ -108,7 +113,9 @@ export async function sendOneBotFriendByQQBotId(qqbotUserId, msg, baseReply) {
   const onebot = findBot("onebot")
   if (!onebot?.pickFriend) throw new Error("OneBotv11 未在线")
 
-  return onebot.pickFriend(onebotUserId).sendMsg(stripReply(mapAtMsg(msg, "onebot", String(qqbotUserId).split(":")[0])))
+  const friend = onebot.pickFriend(onebotUserId)
+  const ret = await friend.sendMsg(stripReply(mapAtMsg(msg, "onebot", String(qqbotUserId).split(":")[0])))
+  return recordRoutedMessage(ret, friend)
 }
 
 export async function sendQQBotFriendByOneBotId(onebotUserId, msg, baseReply) {
@@ -117,7 +124,9 @@ export async function sendQQBotFriendByOneBotId(onebotUserId, msg, baseReply) {
   const qqbotUserId = reverseMappedValue(config.users, onebotUserId, botSelfId(qqbot))
   if (!qqbotUserId) throw new MissingIdentityMapError(onebotUserId)
 
-  return qqbot.pickFriend(qqbotUserId).sendMsg(stripReply(mapAtMsg(msg, "qqbot", botSelfId(qqbot))))
+  const friend = qqbot.pickFriend(qqbotUserId)
+  const ret = await friend.sendMsg(stripReply(mapAtMsg(msg, "qqbot", botSelfId(qqbot))))
+  return recordRoutedMessage(ret, friend)
 }
 
 async function sendQQBotFriend(e, msg, baseReply) {

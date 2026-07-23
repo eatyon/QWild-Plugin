@@ -7,12 +7,14 @@ import { isMissingIdentityMapError, sendOneBot, sendQQBot } from "./sender.js"
 import { isSendSuccess, targetProtocol } from "./message.js"
 import { patchDirectSend } from "./direct.js"
 import { withCurrentEvent } from "./context.js"
+import { messageIds, patchRecall, recallRoutedMessage } from "./recall.js"
 
 const patchFlag = Symbol.for("QWild.Plugin.RouterPatched")
 const replyFlag = Symbol.for("QWild.Plugin.ReplyPatched")
 
 function patchReply(e) {
   patchDirectSend()
+  patchRecall(e)
   if (!config.enable || e?.[replyFlag] || !e?.reply?.bind) return
   if (shouldBypassRuntime()) return
   if (!config.send?.enable) return
@@ -32,7 +34,11 @@ function patchReply(e) {
       const ret = target === "onebot"
         ? await sendOneBot(e, msg, baseReply)
         : await sendQQBot(e, msg, baseReply)
-      if (isSendSuccess(ret) || !config.send.failover) return ret
+      if (isSendSuccess(ret)) {
+        scheduleRecall(ret, data?.recallMsg)
+        return ret
+      }
+      if (!config.send.failover) return ret
       return baseReply(msg, quote, data)
     } catch (err) {
       if (isMissingIdentityMapError(err)) {
@@ -44,6 +50,16 @@ function patchReply(e) {
     }
   }
   e[replyFlag] = true
+}
+
+function scheduleRecall(ret, recallMsg) {
+  const delay = Number(recallMsg || 0)
+  if (!(delay > 0)) return
+  const ids = [...new Set(messageIds(ret))]
+  for (const id of ids) {
+    const timer = setTimeout(() => recallRoutedMessage(id), delay * 1000)
+    timer.unref?.()
+  }
 }
 
 async function patchLoader() {
