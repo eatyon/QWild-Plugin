@@ -158,7 +158,7 @@ function receiveSchemas(protocol, title, adapterTitle) {
       field: `receive.${protocol}.user_mode`,
       label: "用户过滤模式",
       component: "Select",
-      bottomHelpMessage: "黑名单：名单内阻断；白名单：配置名单后只允许名单内继续判断",
+      bottomHelpMessage: "黑名单：名单内阻断，空名单放行；白名单：名单内放行，空名单阻断",
       componentProps: {
         options: modeOptions(),
       },
@@ -176,7 +176,7 @@ function receiveSchemas(protocol, title, adapterTitle) {
       field: `receive.${protocol}.group_mode`,
       label: "群聊过滤模式",
       component: "Select",
-      bottomHelpMessage: "黑名单：名单内阻断；白名单：配置名单后只允许名单内继续判断",
+      bottomHelpMessage: "黑名单：名单内阻断，空名单放行；白名单：名单内放行，空名单阻断",
       componentProps: {
         options: modeOptions(),
       },

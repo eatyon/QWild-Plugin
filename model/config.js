@@ -558,8 +558,8 @@ function stringifyReceiveConfig() {
   return `# QWild 接收控制
 # block 为 true 时启用接收控制；命中用户或群聊阻断范围后，可通过命令放行规则穿透。
 # group_mode / user_mode 可选 black 或 white。
-# black：黑名单模式，名单内阻断。
-# white：白名单模式，配置名单后只允许名单内继续判断。
+# black：黑名单模式，名单内阻断，名单外放行；空名单表示全部放行。
+# white：白名单模式，名单内放行，名单外阻断；空名单表示全部阻断。
 # user_list：用户名单。QQBot 填 BotID:UserID，OBv11 填 QQ号。
 # group_list：群聊名单。QQBot 填 BotID:GroupID，OBv11 填 QQ群号。
 # command_allow_rules：命令放行规则，会话被阻断时，命中任一 texts 命令则放行。
