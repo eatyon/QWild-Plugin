@@ -106,12 +106,13 @@ function commandTextSchema() {
   return {
     field: "texts",
     label: "命令内容",
-    component: "GTags",
+    component: "Select",
     required: true,
+    bottomHelpMessage: "输入后按回车添加，可填写多个",
     componentProps: {
-      allowAdd: true,
-      allowDel: true,
-    },
+      mode: "tags",
+      options: [],
+    }
   }
 }
 
@@ -384,6 +385,7 @@ export function supportGuoba() {
                   options: matchOptions(),
                 },
               },
+              commandTextSchema(),
               {
                 field: "protocol",
                 label: "发送协议",
@@ -393,7 +395,6 @@ export function supportGuoba() {
                   options: protocolOptions("onebot"),
                 },
               },
-              commandTextSchema(),
             ],
           },
         },
