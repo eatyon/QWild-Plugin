@@ -81,9 +81,7 @@ export const defaultConfig = {
     link: "",
     command_rules: [],
   },
-  identity: {
-    unmapped_passthrough: true,
-  },
+  identity: {},
   groups: {},
   users: {},
 }
@@ -284,7 +282,6 @@ function normalizeConfig() {
   config.send.forward = normalizeOptionalProtocol(config.send.forward)
   config.send.command_rules = normalizeSendCommandRules(config.send.command_rules)
   config.identity ||= {}
-  config.identity.unmapped_passthrough = normalizeBoolean(config.identity.unmapped_passthrough, true)
 
   config.groups = normalizeMap(config.groups)
   config.users = normalizeMap(config.users)
@@ -514,7 +511,7 @@ onebot:
 
 function stringifySendConfig() {
   return `# QWild 发送分流
-# enable 为发送分流总开关。关闭后不接管发送，全部走原协议。
+# 开启后接管发送协议，缺少映射时自动走原协议。
 enable: ${config.send.enable}
 
 # 未知类型消息使用的协议；留空表示未知类型走原协议。
@@ -549,9 +546,7 @@ command_rules: ${JSON.stringify(config.send.command_rules || [])}
 
 function stringifyIdentityConfig() {
   return `# QWild 身份映射
-# 开启后缺少群聊或用户映射时，不跨协议分流，直接走原协议。
-unmapped_passthrough: ${config.identity.unmapped_passthrough}
-
+# 跨协议发送时，回复消息里的艾特对象会按用户映射自动转换；未配置映射时保持原样。
 # 群聊映射：完整 QQBot群ID 与 群号 的对应关系。
 # QQBot群ID必须是 BotID:GroupID。
 groups: ${stringifyGroups(config.groups)}

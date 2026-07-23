@@ -47,13 +47,48 @@ function reverseMappedValue(map, value, botId = "") {
   return ""
 }
 
+function mappedAtId(id, protocol, botId = "") {
+  id = String(id || "")
+  if (!id) return ""
+  if (protocol === "onebot") return mappedValue(config.users, qqbotId(botId, id)) || mappedValue(config.users, id)
+  return reverseMappedValue(config.users, id, botId)
+}
+
+function setAtId(item, id) {
+  const next = { ...item }
+  if ("qq" in next) next.qq = id
+  if ("user_id" in next) next.user_id = id
+  if (next.data && typeof next.data === "object" && !Array.isArray(next.data)) {
+    next.data = { ...next.data }
+    if ("qq" in next.data) next.data.qq = id
+    if ("user_id" in next.data) next.data.user_id = id
+  }
+  return next
+}
+
+function mapAtMsg(msg, protocol, botId = "") {
+  if (Array.isArray(msg)) return msg.map(item => mapAtMsg(item, protocol, botId))
+  if (!msg || typeof msg !== "object") return msg
+
+  let next = msg
+  if (msg.type === "at") {
+    const id = msg.qq || msg.user_id || msg.data?.qq || msg.data?.user_id
+    const mapped = mappedAtId(id, protocol, botId)
+    if (mapped) next = setAtId(msg, mapped)
+  }
+
+  if (Array.isArray(next.data)) next = { ...next, data: mapAtMsg(next.data, protocol, botId) }
+  if (Array.isArray(next.message)) next = { ...next, message: mapAtMsg(next.message, protocol, botId) }
+  return next
+}
+
 export async function sendQQBotGroupByOneBotId(onebotGroupId, msg, baseReply) {
   const qqbot = findBot("qqbot")
   if (!qqbot?.pickGroup) throw new Error("QQBot 未在线")
   const qqbotGroupId = reverseMappedValue(config.groups, onebotGroupId, botSelfId(qqbot))
   if (!qqbotGroupId) throw new MissingIdentityMapError(onebotGroupId)
 
-  return qqbot.pickGroup(qqbotGroupId).sendMsg(stripReply(msg))
+  return qqbot.pickGroup(qqbotGroupId).sendMsg(stripReply(mapAtMsg(msg, "qqbot", botSelfId(qqbot))))
 }
 
 export async function sendOneBotGroupByQQBotId(qqbotGroupId, msg, baseReply) {
@@ -63,7 +98,7 @@ export async function sendOneBotGroupByQQBotId(qqbotGroupId, msg, baseReply) {
   const onebot = findBot("onebot")
   if (!onebot?.pickGroup) throw new Error("OneBotv11 未在线")
 
-  return onebot.pickGroup(onebotGroupId).sendMsg(stripReply(msg))
+  return onebot.pickGroup(onebotGroupId).sendMsg(stripReply(mapAtMsg(msg, "onebot", String(qqbotGroupId).split(":")[0])))
 }
 
 export async function sendOneBotFriendByQQBotId(qqbotUserId, msg, baseReply) {
@@ -73,7 +108,7 @@ export async function sendOneBotFriendByQQBotId(qqbotUserId, msg, baseReply) {
   const onebot = findBot("onebot")
   if (!onebot?.pickFriend) throw new Error("OneBotv11 未在线")
 
-  return onebot.pickFriend(onebotUserId).sendMsg(stripReply(msg))
+  return onebot.pickFriend(onebotUserId).sendMsg(stripReply(mapAtMsg(msg, "onebot", String(qqbotUserId).split(":")[0])))
 }
 
 export async function sendQQBotFriendByOneBotId(onebotUserId, msg, baseReply) {
@@ -82,7 +117,7 @@ export async function sendQQBotFriendByOneBotId(onebotUserId, msg, baseReply) {
   const qqbotUserId = reverseMappedValue(config.users, onebotUserId, botSelfId(qqbot))
   if (!qqbotUserId) throw new MissingIdentityMapError(onebotUserId)
 
-  return qqbot.pickFriend(qqbotUserId).sendMsg(stripReply(msg))
+  return qqbot.pickFriend(qqbotUserId).sendMsg(stripReply(mapAtMsg(msg, "qqbot", botSelfId(qqbot))))
 }
 
 async function sendQQBotFriend(e, msg, baseReply) {

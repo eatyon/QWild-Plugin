@@ -28,7 +28,7 @@ function messageTexts(msg, texts = []) {
   return texts
 }
 
-const LINK_RE = /https?:\/\/[^\s]+|(?:^|[^A-Za-z0-9])(?:[A-Za-z0-9]\.[A-Za-z]{2,})(?=$|[^A-Za-z0-9])/i
+const LINK_RE = /https?:\/\/[^\s]+|[A-Za-z0-9]\.[A-Za-z]{2,}/i
 
 function hasLink(msg) {
   return messageTexts(msg).some(text => LINK_RE.test(String(text || "")))

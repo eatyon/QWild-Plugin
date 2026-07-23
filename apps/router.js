@@ -36,8 +36,7 @@ function patchReply(e) {
       return baseReply(msg, quote, data)
     } catch (err) {
       if (isMissingIdentityMapError(err)) {
-        if (config.identity?.unmapped_passthrough) return baseReply(msg, quote, data)
-        return false
+        return baseReply(msg, quote, data)
       }
       Bot.makeLog("error", [`[QWild] ${target === "onebot" ? "OneBotv11" : "QQBot"} 发送失败`, err], e.self_id)
       if (config.send.failover) return baseReply(msg, quote, data)

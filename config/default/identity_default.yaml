@@ -1,7 +1,5 @@
 # QWild 身份映射
-# 开启后缺少群聊或用户映射时，不跨协议分流，直接走原协议。
-unmapped_passthrough: true
-
+# 跨协议发送时，回复消息里的艾特对象会按用户映射自动转换；未配置映射时保持原样。
 # 群聊映射：完整 QQBot群ID 与 群号 的对应关系。
 # QQBot群ID必须是 BotID:GroupID。
 groups: {}

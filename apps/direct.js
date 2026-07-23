@@ -55,8 +55,7 @@ async function routeDirectSend(protocol, type, key, id, msg, originalSendMsg) {
     return originalSendMsg(msg)
   } catch (err) {
     if (isMissingIdentityMapError(err)) {
-      if (config.identity?.unmapped_passthrough) return originalSendMsg(msg)
-      return false
+      return originalSendMsg(msg)
     }
     if (config.send.failover) return originalSendMsg(msg)
     throw err

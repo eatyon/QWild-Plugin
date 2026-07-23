@@ -176,6 +176,17 @@ function hasCurrentMapping(e, protocol) {
   return false
 }
 
+function currentRouteState(e, protocol) {
+  if (!config.send.enable) return { value: "未启用", type: "off" }
+  const type = isGroup(e) ? "group" : isPrivate(e) ? "user" : ""
+  if (!type) return { value: "否", type: "off" }
+
+  const map = type === "group" ? config.groups : config.users
+  const id = currentId(e, type, protocol)
+  const ok = protocol === "qqbot" ? Boolean(map[id]) : hasCurrentQQBotValue(map, id)
+  return { value: ok ? "是" : "否", type: ok ? "ok" : "off" }
+}
+
 function showIdKey(e, protocol) {
   if (isGroup(e)) {
     const onebotGroupId = protocol === "onebot"
@@ -349,7 +360,7 @@ export class qwildAdmin extends plugin {
         group: "接收与发送",
         list: [
           { title: "发送分流", value: onOff(config.send.enable), type: statusType(config.send.enable) },
-          { title: "未映射不分流", value: onOff(config.identity?.unmapped_passthrough), type: statusType(config.identity?.unmapped_passthrough) },
+          { title: "当前会话接管", ...currentRouteState(this.e, protocol) },
           { title: "QQBot 接收阻断", value: onOff(config.receive.qqbot.block), type: statusType(config.receive.qqbot.block) },
           { title: "OBv11 接收阻断", value: onOff(config.receive.onebot.block), type: statusType(config.receive.onebot.block) },
           { title: "主动消息接管", value: onOff(config.send.active_message?.enable), type: statusType(config.send.active_message?.enable) },
