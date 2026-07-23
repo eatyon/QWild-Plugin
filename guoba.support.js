@@ -31,7 +31,7 @@ function protocolBotIds(protocol) {
   const ids = Array.from(globalThis.Bot?.uin || [])
   const rule = config.protocols[protocol] || {}
   const selected = String(rule.self_id || "")
-  if (selected) return ids.includes(selected) ? [selected] : []
+  if (selected) return ids.filter(id => String(id) === selected)
   return ids.filter(id => adapterName(globalThis.Bot?.[id]) === rule.adapter)
 }
 
@@ -106,12 +106,12 @@ function commandTextSchema() {
   return {
     field: "texts",
     label: "命令内容",
-    component: "Select",
+    component: "GTags",
     required: true,
     componentProps: {
-      mode: "tags",
-      options: [],
-    }
+      allowAdd: true,
+      allowDel: true,
+    },
   }
 }
 
@@ -369,7 +369,7 @@ export function supportGuoba() {
         },
         {
           field: "sendCommandRules",
-          label: "命令分流",
+          label: "命令分流规则",
           component: "GSubForm",
           bottomHelpMessage: "命中后优先使用指定协议，不指定则走原协议",
           componentProps: {
@@ -384,7 +384,6 @@ export function supportGuoba() {
                   options: matchOptions(),
                 },
               },
-              commandTextSchema(),
               {
                 field: "protocol",
                 label: "发送协议",
@@ -394,6 +393,7 @@ export function supportGuoba() {
                   options: protocolOptions("onebot"),
                 },
               },
+              commandTextSchema(),
             ],
           },
         },
@@ -428,20 +428,18 @@ export function supportGuoba() {
               {
                 field: "qqbot",
                 label: "QQBot群",
-                component: "Select",
+                component: "AutoComplete",
                 required: true,
                 componentProps: {
-                  mode: "tags",
                   options: groupOptions("qqbot"),
                 },
               },
               {
                 field: "onebot",
                 label: "群号",
-                component: "Select",
+                component: "AutoComplete",
                 required: true,
                 componentProps: {
-                  mode: "tags",
                   options: groupOptions("onebot"),
                 },
               },
@@ -459,20 +457,18 @@ export function supportGuoba() {
               {
                 field: "qqbot",
                 label: "QQBot用户",
-                component: "Select",
+                component: "AutoComplete",
                 required: true,
                 componentProps: {
-                  mode: "tags",
                   options: userOptions("qqbot"),
                 },
               },
               {
                 field: "onebot",
                 label: "QQ号",
-                component: "Select",
+                component: "AutoComplete",
                 required: true,
                 componentProps: {
-                  mode: "tags",
                   options: userOptions("onebot"),
                 },
               },

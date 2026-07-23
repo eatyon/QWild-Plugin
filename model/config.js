@@ -140,27 +140,89 @@ function findKeySeparator(line) {
 }
 
 function parseSimpleYaml(text) {
-  const root = {}
-  const stack = [{ indent: -1, value: root }]
+  const lines = String(text || "")
+    .split(/\r?\n/)
+    .map(rawLine => stripComment(rawLine).replace(/\s+$/, ""))
+    .filter(line => line.trim())
+    .map(line => ({
+      indent: line.match(/^\s*/)[0].length,
+      body: line.trim(),
+    }))
 
-  for (const rawLine of String(text || "").split(/\r?\n/)) {
-    const line = stripComment(rawLine).replace(/\s+$/, "")
-    if (!line.trim()) continue
+  function parseBlock(start, indent) {
+    const isArray = lines[start]?.body.startsWith("- ")
+    const value = isArray ? [] : {}
+    let index = start
 
-    const indent = line.match(/^\s*/)[0].length
-    const body = line.trim()
-    const index = findKeySeparator(body)
-    if (index < 0) continue
+    while (index < lines.length) {
+      const line = lines[index]
+      if (line.indent < indent) break
+      if (line.indent > indent) {
+        index++
+        continue
+      }
 
-    const key = parseScalar(body.slice(0, index))
-    const rest = body.slice(index + 1).trim()
+      if (isArray) {
+        if (!line.body.startsWith("- ")) break
+        const rest = line.body.slice(2).trim()
+        const keyIndex = findKeySeparator(rest)
 
-    while (stack.length > 1 && indent <= stack.at(-1).indent) stack.pop()
-    const parent = stack.at(-1).value
-    parent[key] = rest ? parseScalar(rest) : {}
-    if (!rest) stack.push({ indent, value: parent[key] })
+        if (!rest) {
+          const [child, next] = parseChild(index, line.indent)
+          value.push(child)
+          index = next
+        } else if (keyIndex >= 0) {
+          const item = {}
+          assignPair(item, rest, keyIndex, index)
+          index++
+          if (lines[index]?.indent > line.indent) {
+            const [extra, next] = parseBlock(index, lines[index].indent)
+            if (extra && typeof extra === "object" && !Array.isArray(extra)) Object.assign(item, extra)
+            index = next
+          }
+          value.push(item)
+        } else {
+          value.push(parseScalar(rest))
+          index++
+        }
+        continue
+      }
+
+      const keyIndex = findKeySeparator(line.body)
+      if (keyIndex < 0) {
+        index++
+        continue
+      }
+      assignPair(value, line.body, keyIndex, index)
+      index++
+    }
+
+    return [value, index]
   }
 
+  function assignPair(target, body, keyIndex, index) {
+    const key = parseScalar(body.slice(0, keyIndex))
+    const rest = body.slice(keyIndex + 1).trim()
+    if (rest) {
+      target[key] = parseScalar(rest)
+      return
+    }
+
+    if (lines[index + 1]?.indent > lines[index].indent) {
+      const [child, next] = parseBlock(index + 1, lines[index + 1].indent)
+      target[key] = child
+      lines[index]._next = next
+      return
+    }
+    target[key] = {}
+  }
+
+  function parseChild(index, indent) {
+    if (lines[index + 1]?.indent > indent) return parseBlock(index + 1, lines[index + 1].indent)
+    return [{}, index + 1]
+  }
+
+  const [root] = lines.length ? parseBlock(0, lines[0].indent) : [{}]
   return root
 }
 
@@ -458,8 +520,18 @@ function stringifyList(list) {
   return JSON.stringify((list || []).map(item => String(item)))
 }
 
-function stringifyCommandList(list) {
-  return JSON.stringify(list || [])
+function stringifyCommandRules(list, withProtocol = false) {
+  if (!Array.isArray(list) || !list.length) return "[]"
+  const lines = [""]
+  for (const item of list) {
+    lines.push(`  - match: ${quote(item?.match || "starts")}`)
+    if (withProtocol) lines.push(`    protocol: ${quote(item?.protocol || "")}`)
+    lines.push("    texts:")
+    for (const text of normalizeList(item?.texts)) {
+      lines.push(`      - ${quote(text)}`)
+    }
+  }
+  return lines.join("\n")
 }
 
 function stringifyBasicConfig() {
@@ -494,14 +566,14 @@ function stringifyReceiveConfig() {
 # command_allow_rules：命令放行规则，通过群聊/用户过滤后，命中任一 texts 命令则放行。
 qqbot:
   block: ${config.receive.qqbot.block}
-  command_allow_rules: ${stringifyCommandList(config.receive.qqbot.command_allow_rules)}
+  command_allow_rules: ${stringifyCommandRules(config.receive.qqbot.command_allow_rules)}
   group_mode: ${quote(config.receive.qqbot.group_mode)}
   group_list: ${stringifyList(config.receive.qqbot.group_list)}
   user_mode: ${quote(config.receive.qqbot.user_mode)}
   user_list: ${stringifyList(config.receive.qqbot.user_list)}
 onebot:
   block: ${config.receive.onebot.block}
-  command_allow_rules: ${stringifyCommandList(config.receive.onebot.command_allow_rules)}
+  command_allow_rules: ${stringifyCommandRules(config.receive.onebot.command_allow_rules)}
   group_mode: ${quote(config.receive.onebot.group_mode)}
   group_list: ${stringifyList(config.receive.onebot.group_list)}
   user_mode: ${quote(config.receive.onebot.user_mode)}
@@ -540,7 +612,7 @@ link: ${quote(config.send.link)}
 # 命令分流优先级高于消息类型分流。
 # match 可选 starts / contains / equals / regex，texts 可填写多个命令，protocol 可选 qqbot / onebot / 留空。
 # protocol 留空表示命中后仍走原协议。
-command_rules: ${JSON.stringify(config.send.command_rules || [])}
+command_rules: ${stringifyCommandRules(config.send.command_rules, true)}
 `
 }
 
