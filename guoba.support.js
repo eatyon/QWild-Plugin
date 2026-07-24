@@ -359,6 +359,7 @@ export function supportGuoba() {
           field: "send.active_message.enable",
           label: "主动消息接管",
           component: "Switch",
+          helpMessage: "2 秒内同目标同内容主动消息会自动去重",
           bottomHelpMessage: "定时任务、主动群聊/私聊等非回复消息也走发送分流",
         },
         {

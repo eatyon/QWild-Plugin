@@ -44,7 +44,7 @@ export const defaultConfig = {
     qqbot: {
       block: false,
       command_allow_rules: [],
-      user_mode: "white",
+      user_mode: "black",
       user_list: [],
       group_mode: "white",
       group_list: [],
@@ -52,7 +52,7 @@ export const defaultConfig = {
     onebot: {
       block: false,
       command_allow_rules: [],
-      user_mode: "white",
+      user_mode: "black",
       user_list: [],
       group_mode: "white",
       group_list: [],

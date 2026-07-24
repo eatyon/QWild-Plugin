@@ -8,14 +8,14 @@
 # command_allow_rules：命令放行规则，会话被阻断时，命中任一 texts 命令则放行。
 qqbot:
   block: false
-  user_mode: "white"
+  user_mode: "black"
   user_list: []
   group_mode: "white"
   group_list: []
   command_allow_rules: []
 onebot:
   block: false
-  user_mode: "white"
+  user_mode: "black"
   user_list: []
   group_mode: "white"
   group_list: []
