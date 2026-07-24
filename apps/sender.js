@@ -1,4 +1,5 @@
 import { config } from "../model/config.js"
+import { withNoRoute } from "./context.js"
 import { findBot } from "./protocol.js"
 import { stripReply } from "./message.js"
 import { recordRoutedMessage } from "./recall.js"
@@ -90,7 +91,7 @@ export async function sendQQBotGroupByOneBotId(onebotGroupId, msg) {
   if (!qqbotGroupId) throw new MissingIdentityMapError(onebotGroupId)
 
   const group = qqbot.pickGroup(qqbotGroupId)
-  const ret = await group.sendMsg(stripReply(mapAtMsg(msg, "qqbot", botSelfId(qqbot))))
+  const ret = await withNoRoute(() => group.sendMsg(stripReply(mapAtMsg(msg, "qqbot", botSelfId(qqbot)))))
   return recordRoutedMessage(ret, group)
 }
 
@@ -102,7 +103,7 @@ export async function sendOneBotGroupByQQBotId(qqbotGroupId, msg) {
   if (!onebot?.pickGroup) throw new Error("OneBotv11 未在线")
 
   const group = onebot.pickGroup(onebotGroupId)
-  const ret = await group.sendMsg(stripReply(mapAtMsg(msg, "onebot", String(qqbotGroupId).split(":")[0])))
+  const ret = await withNoRoute(() => group.sendMsg(stripReply(mapAtMsg(msg, "onebot", String(qqbotGroupId).split(":")[0]))))
   return recordRoutedMessage(ret, group)
 }
 
@@ -114,7 +115,7 @@ export async function sendOneBotFriendByQQBotId(qqbotUserId, msg) {
   if (!onebot?.pickFriend) throw new Error("OneBotv11 未在线")
 
   const friend = onebot.pickFriend(onebotUserId)
-  const ret = await friend.sendMsg(stripReply(mapAtMsg(msg, "onebot", String(qqbotUserId).split(":")[0])))
+  const ret = await withNoRoute(() => friend.sendMsg(stripReply(mapAtMsg(msg, "onebot", String(qqbotUserId).split(":")[0]))))
   return recordRoutedMessage(ret, friend)
 }
 
@@ -125,7 +126,7 @@ export async function sendQQBotFriendByOneBotId(onebotUserId, msg) {
   if (!qqbotUserId) throw new MissingIdentityMapError(onebotUserId)
 
   const friend = qqbot.pickFriend(qqbotUserId)
-  const ret = await friend.sendMsg(stripReply(mapAtMsg(msg, "qqbot", botSelfId(qqbot))))
+  const ret = await withNoRoute(() => friend.sendMsg(stripReply(mapAtMsg(msg, "qqbot", botSelfId(qqbot)))))
   return recordRoutedMessage(ret, friend)
 }
 
