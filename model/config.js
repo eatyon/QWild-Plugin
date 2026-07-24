@@ -44,6 +44,7 @@ export const defaultConfig = {
     qqbot: {
       block: false,
       command_allow_rules: [],
+      user_allow_list: [],
       user_mode: "black",
       user_list: [],
       group_mode: "white",
@@ -52,6 +53,7 @@ export const defaultConfig = {
     onebot: {
       block: false,
       command_allow_rules: [],
+      user_allow_list: [],
       user_mode: "black",
       user_list: [],
       group_mode: "white",
@@ -62,7 +64,7 @@ export const defaultConfig = {
     require_both_online: true,
   },
   send: {
-    enable: true,
+    enable: false,
     default: "",
     failover: false,
     active_message: {
@@ -71,11 +73,11 @@ export const defaultConfig = {
     text: "qqbot",
     image: "qqbot",
     image_text: "qqbot",
-    markdown: "qqbot",
-    button: "qqbot",
-    file: "",
     record: "",
     video: "",
+    file: "",
+    button: "qqbot",
+    markdown: "qqbot",
     node: "onebot",
     forward: "onebot",
     link: "",
@@ -308,6 +310,7 @@ function normalizeReceive(protocol) {
   }
   config.receive[protocol].block = normalizeBoolean(config.receive[protocol].block, defaults.block)
   config.receive[protocol].command_allow_rules = normalizeCommandList(config.receive[protocol].command_allow_rules)
+  config.receive[protocol].user_allow_list = normalizeList(config.receive[protocol].user_allow_list)
   config.receive[protocol].group_mode = normalizeMode(config.receive[protocol].group_mode)
   config.receive[protocol].group_list = normalizeList(config.receive[protocol].group_list)
   config.receive[protocol].user_mode = normalizeMode(config.receive[protocol].user_mode)
@@ -560,11 +563,13 @@ function stringifyReceiveConfig() {
 # group_mode / user_mode 可选 black 或 white。
 # black：黑名单模式，名单内阻断，名单外放行；空名单表示全部放行。
 # white：白名单模式，名单内放行，名单外阻断；空名单表示全部阻断。
+# user_allow_list：用户放行名单，命中后直接放行，不再判断用户和群聊过滤。
 # user_list：用户名单。QQBot 填 BotID:UserID，OBv11 填 QQ号。
 # group_list：群聊名单。QQBot 填 BotID:GroupID，OBv11 填 QQ群号。
 # command_allow_rules：命令放行规则，会话被阻断时，命中任一 texts 命令则放行。
 qqbot:
   block: ${config.receive.qqbot.block}
+  user_allow_list: ${stringifyList(config.receive.qqbot.user_allow_list)}
   user_mode: ${quote(config.receive.qqbot.user_mode)}
   user_list: ${stringifyList(config.receive.qqbot.user_list)}
   group_mode: ${quote(config.receive.qqbot.group_mode)}
@@ -572,6 +577,7 @@ qqbot:
   command_allow_rules: ${stringifyCommandRules(config.receive.qqbot.command_allow_rules)}
 onebot:
   block: ${config.receive.onebot.block}
+  user_allow_list: ${stringifyList(config.receive.onebot.user_allow_list)}
   user_mode: ${quote(config.receive.onebot.user_mode)}
   user_list: ${stringifyList(config.receive.onebot.user_list)}
   group_mode: ${quote(config.receive.onebot.group_mode)}
@@ -599,11 +605,11 @@ active_message:
 text: ${quote(config.send.text)}
 image: ${quote(config.send.image)}
 image_text: ${quote(config.send.image_text)}
-markdown: ${quote(config.send.markdown)}
-button: ${quote(config.send.button)}
-file: ${quote(config.send.file)}
 record: ${quote(config.send.record)}
 video: ${quote(config.send.video)}
+file: ${quote(config.send.file)}
+button: ${quote(config.send.button)}
+markdown: ${quote(config.send.markdown)}
 node: ${quote(config.send.node)}
 forward: ${quote(config.send.forward)}
 link: ${quote(config.send.link)}

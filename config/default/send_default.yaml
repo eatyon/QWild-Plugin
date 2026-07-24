@@ -1,6 +1,6 @@
 # QWild 发送分流
 # 开启后接管发送协议，缺少映射时自动走原协议。
-enable: true
+enable: false
 
 # 未知类型消息使用的协议；留空表示未知类型走原协议。
 default: ""
@@ -16,11 +16,11 @@ active_message:
 text: "qqbot"
 image: "qqbot"
 image_text: "qqbot"
-markdown: "qqbot"
-button: "qqbot"
-file: "onebot"
 record: ""
 video: ""
+file: ""
+button: "qqbot"
+markdown: "qqbot"
 node: "onebot"
 forward: "onebot"
 link: ""

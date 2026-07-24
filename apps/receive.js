@@ -81,6 +81,8 @@ export function shouldBlockReceive(e, protocol) {
 
   if (!rule.block) return false
 
+  if (listIncludes(rule.user_allow_list, e.user_id)) return false
+
   const userHit = listIncludes(rule.user_list, e.user_id)
   let blocked = rule.user_mode === "white" ? !userHit : userHit
 
