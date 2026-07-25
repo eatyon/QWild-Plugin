@@ -94,7 +94,7 @@ async function patchLoader() {
   PluginsLoader[patchFlag] = true
   patchDirectSend()
   Bot.on?.("connect", patchDirectSend)
-  Bot.makeLog("info", "[QWild] 协议分流已接入")
+  Bot.makeLog("info", "[QWild] 消息路由已接入")
 }
 
 await patchLoader()
