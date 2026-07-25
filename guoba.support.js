@@ -316,7 +316,7 @@ export function supportGuoba() {
     pluginInfo: {
       name: "QWild-Plugin",
       title: "QWild-Plugin",
-      author: "eatyon",
+      author: "@eatyon",
       authorLink: "https://github.com/eatyon",
       link: "https://github.com/eatyon/QWild-Plugin",
       isV3: true,
@@ -370,7 +370,7 @@ export function supportGuoba() {
           field: "response_prefixes.qqbot",
           label: "QQBot 响应前缀",
           component: "GTags",
-          helpMessage: "仅群聊生效，未艾特机器人时命中前缀才会进入云崽；命中后自动去除前缀",
+          bottomHelpMessage: "仅群聊生效，未艾特机器人时命中前缀才会进入云崽；命中后自动去除前缀",
           componentProps: {
             allowAdd: true,
             allowDel: true,
@@ -380,7 +380,7 @@ export function supportGuoba() {
           field: "response_prefixes.onebot",
           label: "OBv11 响应前缀",
           component: "GTags",
-          helpMessage: "仅群聊生效，未艾特机器人时命中前缀才会进入云崽；命中后自动去除前缀",
+          bottomHelpMessage: "仅群聊生效，未艾特机器人时命中前缀才会进入云崽；命中后自动去除前缀",
           componentProps: {
             allowAdd: true,
             allowDel: true,

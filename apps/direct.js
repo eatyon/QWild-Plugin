@@ -10,23 +10,12 @@ import {
   sendQQBotFriendByOneBotId,
 } from "./sender.js"
 import { isSendSuccess, messageTypes, otherProtocol, targetProtocol } from "./message.js"
+import { hasMappedValue, qqbotId } from "../model/identity.js"
 
 const patchedFriendBots = new WeakSet()
 const patchedGroupBots = new WeakSet()
 const activeDedupCache = new Map()
 const activeDedupTTL = 2000
-
-function qqbotGroupKey(botId, groupId) {
-  groupId = String(groupId || "")
-  if (groupId.includes(":")) return groupId
-  return `${botId}:${groupId}`
-}
-
-function qqbotUserKey(botId, userId) {
-  userId = String(userId || "")
-  if (userId.includes(":")) return userId
-  return `${botId}:${userId}`
-}
 
 function directSendDecision(protocol, msg) {
   const e = getCurrentEvent()
@@ -63,25 +52,20 @@ function directSendDecision(protocol, msg) {
   return fallback
 }
 
-function reverseMappedValue(map, value) {
-  value = String(value || "")
-  return Object.values(map || {}).some(item => String(item) === value)
-}
-
 function normalizedTarget(protocol, type, key, id) {
   if (type === "group") {
     if (protocol === "qqbot") {
       const groupId = config.groups?.[key]
       return groupId ? `group:${groupId}` : ""
     }
-    return reverseMappedValue(config.groups, id) ? `group:${id}` : ""
+    return hasMappedValue(config.groups, id) ? `group:${id}` : ""
   }
 
   if (protocol === "qqbot") {
     const userId = config.users?.[key]
     return userId ? `user:${userId}` : ""
   }
-  return reverseMappedValue(config.users, id) ? `user:${id}` : ""
+  return hasMappedValue(config.users, id) ? `user:${id}` : ""
 }
 
 function stableStringify(value) {
@@ -167,7 +151,7 @@ function patchPickFriend(bot, botId, protocol) {
 
     const originalSendMsg = friend.sendMsg.bind(friend)
     friend.sendMsg = async msg => {
-      const key = qqbotUserKey(botId, userId || friend.user_id)
+      const key = qqbotId(botId, userId || friend.user_id)
       const id = userId || friend.user_id
       const decision = directSendDecision(protocol, msg)
       if (decision.active) {
@@ -195,7 +179,7 @@ function patchPickGroup(bot, botId, protocol) {
 
     const originalSendMsg = group.sendMsg.bind(group)
     group.sendMsg = async msg => {
-      const key = qqbotGroupKey(botId, groupId || group.group_id)
+      const key = qqbotId(botId, groupId || group.group_id)
       const id = groupId || group.group_id
       const decision = directSendDecision(protocol, msg)
       if (decision.active) {

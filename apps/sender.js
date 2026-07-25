@@ -3,6 +3,7 @@ import { withNoRoute } from "./context.js"
 import { findBot } from "./protocol.js"
 import { stripReply } from "./message.js"
 import { recordRoutedMessage } from "./recall.js"
+import { mappedValue, qqbotBotId, qqbotId, reverseMappedValue } from "../model/identity.js"
 
 export class MissingIdentityMapError extends Error {
   constructor(id) {
@@ -16,12 +17,6 @@ export function isMissingIdentityMapError(err) {
   return err?.name === "MissingIdentityMapError"
 }
 
-function qqbotId(selfId, id) {
-  id = String(id || "")
-  if (!id || id.includes(":")) return id
-  return `${selfId}:${id}`
-}
-
 function botSelfId(bot) {
   return String(bot?.uin || bot?.self_id || "")
 }
@@ -32,21 +27,6 @@ function qqbotGroupKey(e) {
 
 function qqbotUserKey(e) {
   return qqbotId(e?.self_id || e?.bot?.uin || e?.bot?.self_id, e?.user_id)
-}
-
-function mappedValue(map, key) {
-  key = String(key || "")
-  return map[key] || ""
-}
-
-function reverseMappedValue(map, value, botId = "") {
-  value = String(value || "")
-  botId = String(botId || "")
-  for (const [from, to] of Object.entries(map || {})) {
-    if (botId && !String(from).startsWith(`${botId}:`)) continue
-    if (String(to) === value) return from
-  }
-  return ""
 }
 
 function mappedAtId(id, protocol, botId = "") {
@@ -103,7 +83,7 @@ export async function sendOneBotGroupByQQBotId(qqbotGroupId, msg) {
   if (!onebot?.pickGroup) throw new Error("OneBotv11 未在线")
 
   const group = onebot.pickGroup(onebotGroupId)
-  const ret = await withNoRoute(() => group.sendMsg(stripReply(mapAtMsg(msg, "onebot", String(qqbotGroupId).split(":")[0]))))
+  const ret = await withNoRoute(() => group.sendMsg(stripReply(mapAtMsg(msg, "onebot", qqbotBotId(qqbotGroupId)))))
   return recordRoutedMessage(ret, group)
 }
 
@@ -115,7 +95,7 @@ export async function sendOneBotFriendByQQBotId(qqbotUserId, msg) {
   if (!onebot?.pickFriend) throw new Error("OneBotv11 未在线")
 
   const friend = onebot.pickFriend(onebotUserId)
-  const ret = await withNoRoute(() => friend.sendMsg(stripReply(mapAtMsg(msg, "onebot", String(qqbotUserId).split(":")[0]))))
+  const ret = await withNoRoute(() => friend.sendMsg(stripReply(mapAtMsg(msg, "onebot", qqbotBotId(qqbotUserId)))))
   return recordRoutedMessage(ret, friend)
 }
 

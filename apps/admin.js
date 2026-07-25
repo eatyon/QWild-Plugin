@@ -2,6 +2,7 @@ import { createRequire } from "node:module"
 import common from "../../../lib/common/common.js"
 import { config, configSave } from "../model/config.js"
 import { eventProtocol, findBot, protocolStatus } from "./protocol.js"
+import { findAllByValue, findMapping, isOneBotId, isQQBotId, parseMappingPair, qqbotId } from "../model/identity.js"
 
 const require = createRequire(import.meta.url)
 const pkg = require("../package.json")
@@ -65,12 +66,6 @@ function isPrivate(e) {
   return Boolean(e?.isPrivate || e?.message_type === "private")
 }
 
-function qqbotId(selfId, id) {
-  id = String(id || "")
-  if (!id || id.includes(":")) return id
-  return `${selfId}:${id}`
-}
-
 function currentId(e, type, protocol = eventProtocol(e)) {
   const id = type === "group" ? e?.group_id : e?.user_id
   return protocol === "qqbot" ? qqbotId(e?.self_id || e?.bot?.uin || e?.bot?.self_id, id) : String(id || "")
@@ -89,14 +84,6 @@ function atIds(e, protocol = eventProtocol(e)) {
 
 function otherProtocol(protocol) {
   return protocol === "qqbot" ? "OBv11" : "QQBot"
-}
-
-function isQQBotId(id) {
-  return /^[^:\s]+:.+$/.test(String(id || ""))
-}
-
-function isOneBotId(id) {
-  return /^\d+$/.test(String(id || ""))
 }
 
 function mapLabel(type) {
@@ -118,25 +105,6 @@ function mapLines(list) {
   return list.map((item, index) => `${index + 1}. ${mapText(item)}`).join("\n")
 }
 
-function parsePair(text, type) {
-  const parts = String(text || "")
-    .trim()
-    .split("=")
-    .map(item => item.trim())
-    .filter(Boolean)
-  if (parts.length !== 2) return null
-
-  const [left, right] = parts
-  if (isQQBotId(left) && isOneBotId(right)) return { qqbot: left, onebot: right }
-  if (isQQBotId(right) && isOneBotId(left)) return { qqbot: right, onebot: left }
-  return null
-}
-
-function findAllByValue(map, value) {
-  value = String(value || "")
-  return Object.entries(map || {}).filter(([, to]) => String(to) === value)
-}
-
 function currentQQBotId() {
   const bot = findBot("qqbot")
   return String(bot?.uin || bot?.self_id || "")
@@ -146,22 +114,6 @@ function hasCurrentQQBotValue(map, value) {
   const botId = currentQQBotId()
   if (!botId) return false
   return findAllByValue(map, value).some(([from]) => String(from).startsWith(`${botId}:`))
-}
-
-function findMapping(map, id) {
-  id = String(id || "").trim()
-  if (!id) return null
-  if (id.includes("=")) {
-    const pair = parsePair(id)
-    if (!pair) return null
-    return String(map[pair.qqbot] || "") === pair.onebot ? [pair.qqbot, pair.onebot] : null
-  }
-  if (map[id]) return [id, map[id]]
-  if (isQQBotId(id)) return null
-
-  const hits = findAllByValue(map, id)
-  if (hits.length > 1) return { ambiguous: true, value: id }
-  return hits[0] || null
 }
 
 function hasCurrentMapping(e, protocol) {
@@ -531,7 +483,7 @@ export class qwildAdmin extends plugin {
 
   async addGroupMap() {
     const arg = actionArg(this.e.msg, /^#[Qq][Ww]添加群聊映射/)
-    const pair = parsePair(arg, "group")
+    const pair = parseMappingPair(arg)
     if (!pair) return this.reply("格式错误\n示例：#QW添加群聊映射 BotID:GroupID=群号", true)
     if (!addMapping("group", pair)) return this.reply("群聊映射已存在，请先删除后再绑定", true)
     await configSave()
@@ -539,7 +491,7 @@ export class qwildAdmin extends plugin {
   }
 
   parseUserAddArg(arg) {
-    if (arg.includes("=")) return parsePair(arg, "user")
+    if (arg.includes("=")) return parseMappingPair(arg)
     return null
   }
 
