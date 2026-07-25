@@ -29,11 +29,29 @@ export function findBot(protocol) {
   return null
 }
 
-function protocolStatus() {
+export function protocolStatus() {
   return {
     qqbot: Boolean(findBot("qqbot")),
     onebot: Boolean(findBot("onebot")),
   }
+}
+
+export function hasOfflineProtocol(status = protocolStatus()) {
+  return !(status.qqbot && status.onebot)
+}
+
+export function offlineMode() {
+  const mode = String(config.runtime?.offline_mode || "bypass")
+  return ["bypass", "bypass_active", "block_only", "block_active"].includes(mode) ? mode : "bypass"
+}
+
+export function offlineModeName(mode = offlineMode()) {
+  return {
+    bypass: "全部旁路",
+    bypass_active: "全部旁路；主动消息切换",
+    block_only: "发送分流旁路",
+    block_active: "发送分流旁路；主动消息切换",
+  }[mode] || "全部旁路"
 }
 
 function offlineReason(status) {
@@ -45,7 +63,7 @@ function offlineReason(status) {
 function logRuntimeState(bypass, status) {
   if (lastRuntimeBypass === null) {
     lastRuntimeBypass = bypass
-    if (bypass) globalThis.logger?.warn?.(`[QWild] ${offlineReason(status)}，已临时旁路插件功能`)
+    if (bypass) globalThis.logger?.warn?.(`[QWild] ${offlineReason(status)}，已旁路接收控制和发送分流`)
     return
   }
 
@@ -53,21 +71,26 @@ function logRuntimeState(bypass, status) {
   lastRuntimeBypass = bypass
 
   if (bypass) {
-    globalThis.logger?.warn?.(`[QWild] ${offlineReason(status)}，已临时旁路插件功能`)
+    globalThis.logger?.warn?.(`[QWild] ${offlineReason(status)}，已旁路接收控制和发送分流`)
     return
   }
 
-  globalThis.logger?.info?.("[QWild] 离线旁路解除，插件功能恢复")
+  globalThis.logger?.info?.("[QWild] 离线处理恢复正常")
 }
 
-export function shouldBypassRuntime() {
-  if (!config.runtime?.require_both_online) {
+export function shouldBypassReceive() {
+  const mode = offlineMode()
+  if (!["bypass", "bypass_active"].includes(mode)) {
     lastRuntimeBypass = null
     return false
   }
 
   const status = protocolStatus()
-  const bypass = !(status.qqbot && status.onebot)
+  const bypass = hasOfflineProtocol(status)
   logRuntimeState(bypass, status)
   return bypass
+}
+
+export function shouldBypassSend() {
+  return hasOfflineProtocol()
 }

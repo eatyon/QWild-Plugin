@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto"
 import { config } from "../model/config.js"
 import { getCurrentEvent, isNoRoute } from "./context.js"
-import { eventProtocol, isProtocol, shouldBypassRuntime } from "./protocol.js"
+import { eventProtocol, hasOfflineProtocol, isProtocol, offlineMode, protocolStatus } from "./protocol.js"
 import {
   isMissingIdentityMapError,
   sendOneBotGroupByQQBotId,
@@ -9,7 +9,7 @@ import {
   sendQQBotGroupByOneBotId,
   sendQQBotFriendByOneBotId,
 } from "./sender.js"
-import { isSendSuccess, messageTypes, targetProtocol } from "./message.js"
+import { isSendSuccess, messageTypes, otherProtocol, targetProtocol } from "./message.js"
 
 const patchedFriendBots = new WeakSet()
 const patchedGroupBots = new WeakSet()
@@ -32,7 +32,23 @@ function directSendDecision(protocol, msg) {
   const e = getCurrentEvent()
   const fallback = { active: false, finalProtocol: protocol, route: false }
   if (isNoRoute()) return fallback
-  if (!config.enable || !config.send?.enable || shouldBypassRuntime()) return fallback
+  if (!config.enable || !config.send?.enable) return fallback
+
+  const status = protocolStatus()
+  const offline = hasOfflineProtocol(status)
+  if (offline) {
+    if (!config.send.active_message?.enable || e || !["bypass_active", "block_active"].includes(offlineMode())) return fallback
+
+    const other = otherProtocol(protocol)
+    if (!status[protocol] && status[other]) return { active: true, finalProtocol: other, route: true }
+
+    const target = targetProtocol(msg, e)
+    if (target && target !== protocol && status[target]) {
+      return { active: true, finalProtocol: target, route: true }
+    }
+    return { active: true, finalProtocol: protocol, route: false }
+  }
+
   const target = targetProtocol(msg, e)
   const finalProtocol = target || protocol
 

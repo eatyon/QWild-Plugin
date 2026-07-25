@@ -61,7 +61,7 @@ export const defaultConfig = {
     },
   },
   runtime: {
-    require_both_online: true,
+    offline_mode: "bypass",
   },
   send: {
     enable: false,
@@ -265,6 +265,11 @@ function normalizeMode(value) {
   return ["black", "white"].includes(value) ? value : "black"
 }
 
+function normalizeOfflineMode(value) {
+  value = String(value || "").trim().toLowerCase()
+  return ["bypass", "bypass_active", "block_only", "block_active"].includes(value) ? value : "bypass"
+}
+
 function normalizeList(value) {
   if (Array.isArray(value)) return value.map(item => String(item).trim()).filter(Boolean)
   if (value === undefined || value === null || value === "") return []
@@ -324,7 +329,7 @@ function normalizeConfig() {
   config.protocols.qqbot.self_id = String(config.protocols.qqbot.self_id || "").trim()
   config.protocols.onebot.self_id = String(config.protocols.onebot.self_id || "").trim()
   config.runtime ||= {}
-  config.runtime.require_both_online = normalizeBoolean(config.runtime.require_both_online, true)
+  config.runtime.offline_mode = normalizeOfflineMode(config.runtime.offline_mode)
   normalizeReceive("qqbot")
   normalizeReceive("onebot")
   const sendSource = config.send && typeof config.send === "object" ? config.send : {}
@@ -551,9 +556,13 @@ protocols:
     adapter: ${quote(config.protocols.onebot.adapter)}
     self_id: ${quote(config.protocols.onebot.self_id)}
 
-# 离线旁路：开启后任一协议离线时，QWild 自动旁路，让云崽按原协议运行。
+# 离线处理模式：任一协议离线时，QWild 如何处理接收和发送。
+# bypass：全部旁路，接收控制和发送分流都暂停。
+# bypass_active：全部旁路，主动消息会尝试切到另一在线协议。
+# block_only：发送分流旁路，接收控制继续生效。
+# block_active：发送分流旁路，主动消息会尝试切到另一在线协议。
 runtime:
-  require_both_online: ${config.runtime.require_both_online}
+  offline_mode: ${quote(config.runtime.offline_mode)}
 `
 }
 

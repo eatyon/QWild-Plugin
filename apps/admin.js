@@ -1,7 +1,7 @@
 import { createRequire } from "node:module"
 import common from "../../../lib/common/common.js"
 import { config, configSave } from "../model/config.js"
-import { eventProtocol, findBot } from "./protocol.js"
+import { eventProtocol, findBot, protocolStatus } from "./protocol.js"
 
 const require = createRequire(import.meta.url)
 const pkg = require("../package.json")
@@ -41,11 +41,6 @@ function statusType(value) {
 function countMap(map) {
   return Object.keys(map || {}).length
 }
-
-function countList(list) {
-  return Array.isArray(list) ? list.length : 0
-}
-
 function protocolName(protocol) {
   if (protocol === "qqbot") return "QQBot"
   if (protocol === "onebot") return "OBv11"
@@ -333,15 +328,9 @@ export class qwildAdmin extends plugin {
 
   async status() {
     const protocol = eventProtocol(this.e)
-    const qqbotOnline = botStatus("qqbot") === "在线"
-    const onebotOnline = botStatus("onebot") === "在线"
-    const requireBoth = Boolean(config.runtime?.require_both_online)
-    const bypass = requireBoth && !(qqbotOnline && onebotOnline)
-    const bypassStatus = !requireBoth
-      ? "未启用"
-      : !bypass
-        ? "正常"
-        : "旁路"
+    const status = protocolStatus()
+    const qqbotOnline = status.qqbot
+    const onebotOnline = status.onebot
     const statusGroups = [
       {
         group: "运行状态",
@@ -352,8 +341,6 @@ export class qwildAdmin extends plugin {
           { title: "QQBot 账号", value: botId("qqbot"), type: qqbotOnline ? "ok" : "off" },
           { title: "OBv11", value: botStatus("onebot"), type: statusType(onebotOnline) },
           { title: "OBv11 账号", value: botId("onebot"), type: onebotOnline ? "ok" : "off" },
-          { title: "离线旁路", value: onOff(requireBoth), type: statusType(requireBoth) },
-          { title: "旁路状态", value: bypassStatus, type: bypassStatus === "未启用" ? "off" : "ok" },
         ],
       },
       {
@@ -389,13 +376,6 @@ export class qwildAdmin extends plugin {
         list: [
           { title: "群聊映射", value: `${countMap(config.groups)} 个`, type: "route" },
           { title: "用户映射", value: `${countMap(config.users)} 个`, type: "route" },
-        ],
-      },
-      {
-        group: "命令规则",
-        list: [
-          { title: "命令放行规则", value: `${countList(config.receive.qqbot.command_allow_rules) + countList(config.receive.onebot.command_allow_rules)} 条`, type: "route" },
-          { title: "命令分流", value: `${countList(config.send.command_rules)} 条`, type: "route" },
         ],
       },
     ]

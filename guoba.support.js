@@ -141,6 +141,15 @@ function matchOptions() {
   ]
 }
 
+function offlineModeOptions() {
+  return [
+    { label: "全部旁路", value: "bypass" },
+    { label: "全部旁路；主动消息切换", value: "bypass_active" },
+    { label: "发送分流旁路", value: "block_only" },
+    { label: "发送分流旁路；主动消息切换", value: "block_active" },
+  ]
+}
+
 function receiveSchemas(protocol, title, adapterTitle) {
   const displayTitle = adapterTitle === "OneBotv11" ? "OBv11" : adapterTitle
   return [
@@ -330,10 +339,14 @@ export function supportGuoba() {
           bottomHelpMessage: "插件总开关，关闭后不接管接收和发送",
         },
         {
-          field: "runtime.require_both_online",
-          label: "离线旁路",
-          component: "Switch",
-          bottomHelpMessage: "开启后任一协议离线时，QWild 自动旁路，让云崽按原协议运行",
+          field: "runtime.offline_mode",
+          label: "离线处理模式",
+          component: "Select",
+          helpMessage: "主动消息切换需同时开启发送分流和主动消息接管；原协议离线时，主动消息会尝试改用另一在线协议发送",
+          bottomHelpMessage: "任一协议离线时，接收控制和发送分流的旁路状态",
+          componentProps: {
+            options: offlineModeOptions(),
+          },
         },
         {
           field: "protocols.qqbot.self_id",

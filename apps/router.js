@@ -1,7 +1,7 @@
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { config } from "../model/config.js"
-import { eventProtocol, shouldBypassRuntime } from "./protocol.js"
+import { eventProtocol, shouldBypassReceive, shouldBypassSend } from "./protocol.js"
 import { isReceiveForceAllowed, shouldBlockReceive } from "./receive.js"
 import { isMissingIdentityMapError, sendOneBot, sendQQBot } from "./sender.js"
 import { isSendSuccess, targetProtocol } from "./message.js"
@@ -16,7 +16,7 @@ function patchReply(e) {
   patchDirectSend()
   patchRecall(e)
   if (!config.enable || e?.[replyFlag] || !e?.reply?.bind) return
-  if (shouldBypassRuntime()) return
+  if (shouldBypassSend()) return
   if (!config.send?.enable) return
   const protocol = eventProtocol(e)
   if (!["qqbot", "onebot"].includes(protocol)) return
@@ -72,7 +72,7 @@ async function patchLoader() {
 
   PluginsLoader.deal = async function qwildDeal(e) {
     patchDirectSend()
-    if (config.enable && !shouldBypassRuntime() && e?.post_type === "message") {
+    if (config.enable && !shouldBypassReceive() && e?.post_type === "message") {
       const protocol = eventProtocol(e)
       if (protocol && !isReceiveForceAllowed(e) && shouldBlockReceive(e, protocol)) {
         Bot.makeLog(

@@ -15,7 +15,7 @@ const helpGroup = [
       },
       {
         title: "#QW状态",
-        desc: "查看插件状态与离线旁路情况",
+        desc: "查看插件状态与离线处理情况",
       },
       {
         title: "#QW查看ID",

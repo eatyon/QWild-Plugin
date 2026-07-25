@@ -38,8 +38,7 @@ export async function recallRoutedMessage(messageId) {
     await item.recall(id)
     recalledMessages.delete(id)
     return true
-  } catch (err) {
-    globalThis.Bot?.makeLog?.("debug", ["[QWild] 分流消息撤回失败", err])
+  } catch {
     return false
   }
 }

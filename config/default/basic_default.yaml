@@ -12,6 +12,10 @@ protocols:
     adapter: "OneBotv11"
     self_id: ""
 
-# 离线旁路：开启后任一协议离线时，QWild 自动旁路，让云崽按原协议运行。
+# 离线处理模式：任一协议离线时，QWild 如何处理接收和发送。
+# bypass：全部旁路，接收控制和发送分流都暂停。
+# bypass_active：全部旁路，主动消息会尝试切到另一在线协议。
+# block_only：发送分流旁路，接收控制继续生效。
+# block_active：发送分流旁路，主动消息会尝试切到另一在线协议。
 runtime:
-  require_both_online: true
+  offline_mode: "bypass"
