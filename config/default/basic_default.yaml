@@ -12,6 +12,12 @@ protocols:
     adapter: "OneBotv11"
     self_id: ""
 
+# 响应前缀：仅群聊生效，配置后未艾特机器人时必须带前缀才会进入云崽，命中后会自动去除前缀。
+# 艾特机器人时不要求前缀；留空表示不限制。
+response_prefixes:
+  qqbot: []
+  onebot: []
+
 # 离线处理模式：任一协议离线时，QWild 如何处理接收和发送。
 # bypass：全部旁路，接收控制和发送分流都暂停。
 # bypass_active：全部旁路，主动消息会尝试切到另一在线协议。

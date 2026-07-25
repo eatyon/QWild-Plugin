@@ -14,7 +14,13 @@ qqbot:
   user_list: []
   group_mode: "white"
   group_list: []
-  command_allow_rules: []
+  command_allow_rules:
+    - match: "starts"
+      texts:
+        - "#QW查看ID"
+        - "#QW查询ID"
+        - "#QW绑定群聊"
+        - "#QW取消绑定群聊"
 onebot:
   block: false
   user_allow_list: []
@@ -22,4 +28,10 @@ onebot:
   user_list: []
   group_mode: "white"
   group_list: []
-  command_allow_rules: []
+  command_allow_rules:
+    - match: "starts"
+      texts:
+        - "#QW查看ID"
+        - "#QW查询ID"
+        - "#QW绑定群聊"
+        - "#QW取消绑定群聊"

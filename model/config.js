@@ -40,10 +40,14 @@ export const defaultConfig = {
       self_id: "",
     },
   },
+  response_prefixes: {
+    qqbot: [],
+    onebot: [],
+  },
   receive: {
     qqbot: {
       block: false,
-      command_allow_rules: [],
+      command_allow_rules: defaultCommandAllowRules(),
       user_allow_list: [],
       user_mode: "black",
       user_list: [],
@@ -52,7 +56,7 @@ export const defaultConfig = {
     },
     onebot: {
       block: false,
-      command_allow_rules: [],
+      command_allow_rules: defaultCommandAllowRules(),
       user_allow_list: [],
       user_mode: "black",
       user_list: [],
@@ -66,7 +70,7 @@ export const defaultConfig = {
   send: {
     enable: false,
     default: "",
-    failover: false,
+    failover: true,
     active_message: {
       enable: false,
     },
@@ -89,6 +93,20 @@ export const defaultConfig = {
 }
 
 export const config = structuredClone(defaultConfig)
+
+function defaultCommandAllowRules() {
+  return [
+    {
+      match: "starts",
+      texts: [
+        "#QW查看ID",
+        "#QW查询ID",
+        "#QW绑定群聊",
+        "#QW取消绑定群聊",
+      ],
+    },
+  ]
+}
 
 function parseScalar(value) {
   value = String(value ?? "").trim()
@@ -328,6 +346,9 @@ function normalizeConfig() {
   config.protocols.onebot.adapter = String(config.protocols.onebot.adapter || "OneBotv11").trim()
   config.protocols.qqbot.self_id = String(config.protocols.qqbot.self_id || "").trim()
   config.protocols.onebot.self_id = String(config.protocols.onebot.self_id || "").trim()
+  config.response_prefixes ||= {}
+  config.response_prefixes.qqbot = normalizeList(config.response_prefixes.qqbot)
+  config.response_prefixes.onebot = normalizeList(config.response_prefixes.onebot)
   config.runtime ||= {}
   config.runtime.offline_mode = normalizeOfflineMode(config.runtime.offline_mode)
   normalizeReceive("qqbot")
@@ -339,7 +360,7 @@ function normalizeConfig() {
   }
   config.send.enable = normalizeBoolean(config.send.enable, true)
   config.send.default = normalizeOptionalProtocol(config.send.default)
-  config.send.failover = normalizeBoolean(config.send.failover, false)
+  config.send.failover = normalizeBoolean(config.send.failover, true)
   if (!config.send.active_message || typeof config.send.active_message !== "object") {
     config.send.active_message = structuredClone(defaultConfig.send.active_message)
   }
@@ -555,6 +576,12 @@ protocols:
   onebot:
     adapter: ${quote(config.protocols.onebot.adapter)}
     self_id: ${quote(config.protocols.onebot.self_id)}
+
+# 响应前缀：仅群聊生效，配置后未艾特机器人时必须带前缀才会进入云崽，命中后会自动去除前缀。
+# 艾特机器人时不要求前缀；留空表示不限制。
+response_prefixes:
+  qqbot: ${stringifyList(config.response_prefixes.qqbot)}
+  onebot: ${stringifyList(config.response_prefixes.onebot)}
 
 # 离线处理模式：任一协议离线时，QWild 如何处理接收和发送。
 # bypass：全部旁路，接收控制和发送分流都暂停。

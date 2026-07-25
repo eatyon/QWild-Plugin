@@ -5,6 +5,92 @@ function listIncludes(list, id) {
   return (list || []).some(item => String(item) === id)
 }
 
+function currentBotIds(e) {
+  return [
+    e?.self_id,
+    e?.bot?.uin,
+    e?.bot?.self_id,
+  ].map(id => String(id || "")).filter(Boolean)
+}
+
+function atId(item) {
+  return String(item?.qq || item?.user_id || item?.data?.qq || item?.data?.user_id || "")
+}
+
+function isAtBot(e) {
+  if (e?.atBot) return true
+  const ids = currentBotIds(e)
+  if (!ids.length) return false
+  return (e?.message || []).some(item => item?.type === "at" && ids.includes(atId(item)))
+}
+
+function stripPrefixText(text, prefixes) {
+  text = String(text || "")
+  const space = text.match(/^\s*/)?.[0] || ""
+  const body = text.slice(space.length)
+  const prefix = prefixes.find(item => body.startsWith(item))
+  if (!prefix) return null
+  return `${space}${body.slice(prefix.length)}`
+}
+
+function setTextItem(item, text) {
+  if (typeof item === "string") return text
+  const next = { ...item }
+  if ("text" in next) next.text = text
+  if (next.data && typeof next.data === "object" && !Array.isArray(next.data)) {
+    next.data = { ...next.data, text }
+  }
+  return next
+}
+
+function applyResponsePrefix(e, protocol) {
+  if (e?._qwildPrefixChecked) return e._qwildPrefixAllowed
+  if (!(e?.isGroup || e?.message_type === "group")) {
+    e._qwildPrefixChecked = true
+    e._qwildPrefixAllowed = true
+    return true
+  }
+  const prefixes = (config.response_prefixes?.[protocol] || [])
+    .map(item => String(item || "").trim())
+    .filter(Boolean)
+  e._qwildPrefixChecked = true
+  if (!prefixes.length || isAtBot(e)) {
+    e._qwildPrefixAllowed = true
+    return true
+  }
+
+  const message = Array.isArray(e?.message) ? e.message : []
+  for (let index = 0; index < message.length; index++) {
+    const item = message[index]
+    if (typeof item !== "string" && item?.type !== "text") continue
+    const text = typeof item === "string" ? item : item.text ?? item.data?.text ?? ""
+    const nextText = stripPrefixText(text, prefixes)
+    if (nextText === null) {
+      e._qwildPrefixAllowed = false
+      return false
+    }
+
+    e.message = [...message]
+    e.message[index] = setTextItem(item, nextText)
+    e.msg = stripPrefixText(e.msg, prefixes) ?? nextText.trim()
+    e.raw_message = stripPrefixText(e.raw_message, prefixes) ?? e.msg
+    delete e._qwildCommandText
+    e._qwildPrefixAllowed = true
+    return true
+  }
+
+  const nextText = stripPrefixText(e?.msg || e?.raw_message || "", prefixes)
+  if (nextText === null) {
+    e._qwildPrefixAllowed = false
+    return false
+  }
+  e.msg = nextText.trim()
+  e.raw_message = e.msg
+  delete e._qwildCommandText
+  e._qwildPrefixAllowed = true
+  return true
+}
+
 function commandText(e) {
   if (e._qwildCommandText) return e._qwildCommandText
 
@@ -65,32 +151,26 @@ function matchCommandRule(rule, texts) {
   }
 }
 
-export function isReceiveForceAllowed(e) {
-  if (e?.isMaster === false) return false
-
-  return commandText(e).some(text => {
-    if (/^#[Qq][Ww](?:查看|查询)[Ii][Dd]$/.test(text)) return true
-    if (!e?.isGroup && e?.message_type !== "group") return false
-    return /^#[Qq][Ww](绑定群聊|取消绑定群聊)$/.test(text)
-  })
-}
-
 export function shouldBlockReceive(e, protocol) {
   const rule = config.receive[protocol]
   if (!rule) return false
 
-  if (!rule.block) return false
+  if (!rule.block) return !applyResponsePrefix(e, protocol)
 
-  if (listIncludes(rule.user_allow_list, e.user_id)) return false
+  let blocked = false
 
-  const userHit = listIncludes(rule.user_list, e.user_id)
-  let blocked = rule.user_mode === "white" ? !userHit : userHit
+  if (!listIncludes(rule.user_allow_list, e.user_id)) {
+    const userHit = listIncludes(rule.user_list, e.user_id)
+    blocked = rule.user_mode === "white" ? !userHit : userHit
 
-  if (e?.isGroup || e?.message_type === "group") {
-    const groupHit = listIncludes(rule.group_list, e.group_id)
-    const groupBlocked = rule.group_mode === "white" ? !groupHit : groupHit
-    blocked = blocked || groupBlocked
+    if (e?.isGroup || e?.message_type === "group") {
+      const groupHit = listIncludes(rule.group_list, e.group_id)
+      const groupBlocked = rule.group_mode === "white" ? !groupHit : groupHit
+      blocked = blocked || groupBlocked
+    }
   }
+
+  if (!applyResponsePrefix(e, protocol)) return true
 
   if (!blocked) return false
   if (matchCommand(e, rule.command_allow_rules)) return false

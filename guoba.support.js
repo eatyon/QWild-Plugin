@@ -366,6 +366,26 @@ export function supportGuoba() {
             options: botOptions("onebot"),
           },
         },
+        {
+          field: "response_prefixes.qqbot",
+          label: "QQBot 响应前缀",
+          component: "GTags",
+          helpMessage: "仅群聊生效，未艾特机器人时命中前缀才会进入云崽；命中后自动去除前缀",
+          componentProps: {
+            allowAdd: true,
+            allowDel: true,
+          },
+        },
+        {
+          field: "response_prefixes.onebot",
+          label: "OBv11 响应前缀",
+          component: "GTags",
+          helpMessage: "仅群聊生效，未艾特机器人时命中前缀才会进入云崽；命中后自动去除前缀",
+          componentProps: {
+            allowAdd: true,
+            allowDel: true,
+          },
+        },
         ...receiveSchemas("qqbot", "QQBot 接收控制", "QQBot"),
         ...receiveSchemas("onebot", "OBv11 接收控制", "OneBotv11"),
         {

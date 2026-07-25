@@ -2,7 +2,7 @@ import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { config } from "../model/config.js"
 import { eventProtocol, shouldBypassReceive, shouldBypassSend } from "./protocol.js"
-import { isReceiveForceAllowed, shouldBlockReceive } from "./receive.js"
+import { shouldBlockReceive } from "./receive.js"
 import { isMissingIdentityMapError, sendOneBot, sendQQBot } from "./sender.js"
 import { isSendSuccess, targetProtocol } from "./message.js"
 import { patchDirectSend } from "./direct.js"
@@ -74,7 +74,7 @@ async function patchLoader() {
     patchDirectSend()
     if (config.enable && !shouldBypassReceive() && e?.post_type === "message") {
       const protocol = eventProtocol(e)
-      if (protocol && !isReceiveForceAllowed(e) && shouldBlockReceive(e, protocol)) {
+      if (protocol && shouldBlockReceive(e, protocol)) {
         Bot.makeLog(
           "debug",
           `[QWild] 已阻断 ${config.protocols[protocol]?.adapter || protocol} 消息：${e.raw_message || e.msg || ""}`,
