@@ -1,9 +1,9 @@
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { config } from "../model/config.js"
-import { eventProtocol, shouldBypassReceive, shouldBypassSend } from "./protocol.js"
+import { candidateProtocol, eventProtocol, shouldBypassReceive, shouldBypassSend } from "./protocol.js"
 import { shouldBlockReceive } from "./receive.js"
-import { isMissingIdentityMapError, sendOneBot, sendQQBot } from "./sender.js"
+import { isMissingIdentityMapError, sendWild, sendQQBot } from "./sender.js"
 import { isSendSuccess, targetProtocol } from "./message.js"
 import { patchDirectSend } from "./direct.js"
 import { withCurrentEvent } from "./context.js"
@@ -12,6 +12,15 @@ import { messageIds, patchRecall, recallRoutedMessage } from "./recall.js"
 const patchFlag = Symbol.for("QWild.Plugin.RouterPatched")
 const replyFlag = Symbol.for("QWild.Plugin.ReplyPatched")
 
+function isGroupMessage(e) {
+  return Boolean(e?.isGroup || e?.message_type === "group")
+}
+
+function shouldBlockUnselectedProtocol(e, protocol) {
+  if (!config.block_unselected_protocols || !isGroupMessage(e)) return false
+  return Boolean(candidateProtocol(e?.bot) && !protocol)
+}
+
 function patchReply(e) {
   patchDirectSend()
   patchRecall(e)
@@ -19,7 +28,7 @@ function patchReply(e) {
   if (shouldBypassSend()) return
   if (!config.send?.enable) return
   const protocol = eventProtocol(e)
-  if (!["qqbot", "onebot"].includes(protocol)) return
+  if (!["qqbot", "wild"].includes(protocol)) return
   if (!e.isGroup && !e.isPrivate && !["group", "private"].includes(e.message_type)) return
 
   const baseReply = e.reply.bind(e)
@@ -31,8 +40,8 @@ function patchReply(e) {
     if (target === protocol) return baseReply(msg, quote, data)
 
     try {
-      const ret = target === "onebot"
-        ? await sendOneBot(e, msg)
+      const ret = target === "wild"
+        ? await sendWild(e, msg)
         : await sendQQBot(e, msg)
       if (isSendSuccess(ret)) {
         scheduleRecall(ret, data?.recallMsg)
@@ -44,7 +53,7 @@ function patchReply(e) {
       if (isMissingIdentityMapError(err)) {
         return baseReply(msg, quote, data)
       }
-      Bot.makeLog("error", [`[QWild] ${target === "onebot" ? "OneBotv11" : "QQBot"} 发送失败`, err], e.self_id)
+      Bot.makeLog("error", [`[QWild] ${target === "wild" ? "Wild" : "QQBot"} 发送失败`, err], e.self_id)
       if (config.send.failover) return baseReply(msg, quote, data)
       return false
     }
@@ -74,6 +83,14 @@ async function patchLoader() {
     patchDirectSend()
     if (config.enable && !shouldBypassReceive() && e?.post_type === "message") {
       const protocol = eventProtocol(e)
+      if (shouldBlockUnselectedProtocol(e, protocol)) {
+        Bot.makeLog(
+          "debug",
+          `[QWild] 已阻断未接管协议消息：${e.raw_message || e.msg || ""}`,
+          e.self_id,
+        )
+        return
+      }
       if (protocol && shouldBlockReceive(e, protocol)) {
         Bot.makeLog(
           "debug",
@@ -103,7 +120,7 @@ export class qwildRouter extends plugin {
   constructor() {
     super({
       name: "QWild 协议分流",
-      dsc: "QQBot 接收，OneBotv11 发送合并转发",
+      dsc: "QQBot 与 Wild 双协议路由",
       event: "message",
       priority: -999999,
       rule: [],

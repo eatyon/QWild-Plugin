@@ -1,21 +1,61 @@
 import { createHash } from "node:crypto"
 import { config } from "../model/config.js"
-import { getCurrentEvent, isNoRoute } from "./context.js"
-import { eventProtocol, hasOfflineProtocol, isProtocol, offlineMode, protocolStatus } from "./protocol.js"
+import { getCurrentEvent, isNoRoute, withNoRoute } from "./context.js"
+import { eventProtocol, findBot, hasOfflineProtocol, isProtocol, offlineMode, protocolStatus } from "./protocol.js"
 import {
   isMissingIdentityMapError,
-  sendOneBotGroupByQQBotId,
-  sendOneBotFriendByQQBotId,
-  sendQQBotGroupByOneBotId,
-  sendQQBotFriendByOneBotId,
+  sendWildGroupByQQBotId,
+  sendWildFriendByQQBotId,
+  sendQQBotGroupByWildId,
+  sendQQBotFriendByWildId,
 } from "./sender.js"
-import { isSendSuccess, messageTypes, otherProtocol, targetProtocol } from "./message.js"
+import { isSendSuccess, messageTypes, otherProtocol, stripReply, targetProtocol } from "./message.js"
 import { hasMappedValue, qqbotId } from "../model/identity.js"
 
 const patchedFriendBots = new WeakSet()
 const patchedGroupBots = new WeakSet()
+const botProtocolCache = new Map()
+const botApiPatchFlag = "__QWild_Plugin_DirectBotApiPatched__"
 const activeDedupCache = new Map()
 const activeDedupTTL = 2000
+
+function protocolName(protocol) {
+  if (protocol === "qqbot") return "QQBot"
+  if (protocol === "wild") return "Wild"
+  return protocol || "原协议"
+}
+
+function logActiveDebug(message, detail = "") {
+  Bot?.makeLog?.("debug", `[QWild] 主动消息分流：${message}${detail ? `，${detail}` : ""}`)
+}
+
+function cacheBotProtocol(botId, protocol) {
+  if (botId && protocol) botProtocolCache.set(String(botId), protocol)
+}
+
+function isBotOnline(botId) {
+  botId = String(botId || "")
+  if (!botId) return false
+  return Boolean((Bot?.uin || []).map(id => String(id)).includes(botId) && (Bot?.[botId] || Bot?.bots?.[botId]))
+}
+
+function protocolByBotId(botId) {
+  botId = String(botId || "")
+  if (!botId) return ""
+
+  const bot = Bot?.[botId] || Bot?.bots?.[botId]
+  if (isProtocol(bot, "qqbot")) {
+    cacheBotProtocol(botId, "qqbot")
+    return "qqbot"
+  }
+  if (isProtocol(bot, "wild")) {
+    cacheBotProtocol(botId, "wild")
+    return "wild"
+  }
+  if (String(config.protocols?.qqbot?.self_id || "") === botId) return "qqbot"
+  if (String(config.protocols?.wild?.self_id || "") === botId) return "wild"
+  return botProtocolCache.get(botId) || ""
+}
 
 function directSendDecision(protocol, msg) {
   const e = getCurrentEvent()
@@ -50,6 +90,12 @@ function directSendDecision(protocol, msg) {
   }
 
   return fallback
+}
+
+function canRescueOfflineActiveMessage() {
+  if (isNoRoute() || getCurrentEvent()) return false
+  if (!config.enable || !config.send?.enable || !config.send.active_message?.enable) return false
+  return ["bypass_active", "block_active"].includes(offlineMode())
 }
 
 function normalizedTarget(protocol, type, key, id) {
@@ -106,43 +152,99 @@ function clearActiveDuplicate(key) {
 
 async function sendWithActiveDedup(protocol, type, key, id, msg, finalProtocol, send) {
   const dedup = reserveActiveDuplicate(protocol, type, key, id, msg, finalProtocol)
-  if (dedup.skip) return { qwild_dedup: true }
+  if (dedup.skip) {
+    logActiveDebug("跳过重复消息", `${type}:${id} -> ${protocolName(finalProtocol)}`)
+    return { qwild_dedup: true }
+  }
   try {
     const ret = await send()
-    if (!isSendSuccess(ret)) clearActiveDuplicate(dedup.key)
+    if (!isSendSuccess(ret)) {
+      logActiveDebug("发送结果无效，清除去重占位", `${type}:${id} -> ${protocolName(finalProtocol)}`)
+      clearActiveDuplicate(dedup.key)
+    }
     return ret
   } catch (err) {
+    logActiveDebug("发送异常，清除去重占位", err?.message || String(err))
     clearActiveDuplicate(dedup.key)
     throw err
   }
 }
 
-async function routeDirectSend(protocol, type, key, id, msg, originalSendMsg) {
+async function routeDirectSend(protocol, type, key, id, msg, originalSendMsg, fallbackText = "回退原协议") {
+  logActiveDebug("尝试跨协议发送", `${protocolName(protocol)} -> ${protocolName(otherProtocol(protocol))}，${type}:${id}`)
   try {
     let ret
     if (type === "group") {
       ret = protocol === "qqbot"
-        ? await sendOneBotGroupByQQBotId(key, msg)
-        : await sendQQBotGroupByOneBotId(id, msg)
+        ? await sendWildGroupByQQBotId(key, msg)
+        : await sendQQBotGroupByWildId(id, msg)
     } else {
       ret = protocol === "qqbot"
-        ? await sendOneBotFriendByQQBotId(key, msg)
-        : await sendQQBotFriendByOneBotId(id, msg)
+        ? await sendWildFriendByQQBotId(key, msg)
+        : await sendQQBotFriendByWildId(id, msg)
     }
 
     if (isSendSuccess(ret) || !config.send.failover) return ret
+    logActiveDebug(`目标协议返回失败，${fallbackText}`, `${type}:${id}`)
     return originalSendMsg(msg)
   } catch (err) {
     if (isMissingIdentityMapError(err)) {
+      logActiveDebug(`缺少身份映射，${fallbackText}`, err.id || id)
       return originalSendMsg(msg)
     }
-    if (config.send.failover) return originalSendMsg(msg)
+    if (config.send.failover) {
+      logActiveDebug(`目标协议发送异常，${fallbackText}`, err?.message || String(err))
+      return originalSendMsg(msg)
+    }
     throw err
   }
 }
 
+async function sendSameWild(type, id, msg) {
+  const wild = findBot("wild")
+  if (!wild) throw new Error("Wild 未在线")
+
+  const target = type === "group" ? wild.pickGroup?.(id) : wild.pickFriend?.(id)
+  if (!target?.sendMsg) throw new Error(`Wild ${type === "group" ? "群聊" : "好友"}发送入口不可用`)
+  return withNoRoute(() => target.sendMsg(stripReply(msg)))
+}
+
+async function routeOfflineBotApiSend(protocol, type, botId, id, msg) {
+  const status = protocolStatus()
+  const target = targetProtocol(msg, null)
+  let finalProtocol = target || protocol
+  if (!status[finalProtocol] && status[otherProtocol(protocol)]) finalProtocol = otherProtocol(protocol)
+  const key = protocol === "qqbot" ? qqbotId(botId, id) : id
+
+  logActiveDebug("接管离线主动消息", `${protocolName(protocol)} -> ${protocolName(finalProtocol)}，${type}:${id}`)
+
+  return sendWithActiveDedup(protocol, type, key, id, msg, finalProtocol, async () => {
+    if (!status[finalProtocol]) {
+      logActiveDebug("离线主动消息无在线目标，放弃发送", `${protocolName(protocol)}，${type}:${id}`)
+      return false
+    }
+
+    if (finalProtocol !== protocol) {
+      const noOfflineFallback = () => {
+        logActiveDebug("离线主动消息切换失败，放弃发送", `${protocolName(finalProtocol)}，${type}:${id}`)
+        return false
+      }
+      return routeDirectSend(protocol, type, key, id, msg, noOfflineFallback, "放弃发送")
+    }
+
+    if (protocol === "wild") {
+      logActiveDebug("切换到在线 Wild 发送", `${type}:${id}`)
+      return sendSameWild(type, id, msg)
+    }
+
+    logActiveDebug("离线主动消息无法切换，放弃发送", `${protocolName(protocol)}，${type}:${id}`)
+    return false
+  })
+}
+
 function patchPickFriend(bot, botId, protocol) {
   if (!bot?.pickFriend || patchedFriendBots.has(bot)) return
+  cacheBotProtocol(botId, protocol)
 
   const originalPickFriend = bot.pickFriend.bind(bot)
   bot.pickFriend = userId => {
@@ -150,11 +252,14 @@ function patchPickFriend(bot, botId, protocol) {
     if (!friend?.sendMsg) return friend
 
     const originalSendMsg = friend.sendMsg.bind(friend)
-    friend.sendMsg = async msg => {
+    friend.sendMsg = async (...args) => {
+      if (args.length !== 1) return originalSendMsg(...args)
+      const msg = args[0]
       const key = qqbotId(botId, userId || friend.user_id)
       const id = userId || friend.user_id
       const decision = directSendDecision(protocol, msg)
       if (decision.active) {
+        logActiveDebug("接管好友主动消息", `${protocolName(protocol)} -> ${protocolName(decision.finalProtocol)}，路由：${decision.route ? "是" : "否"}，friend:${id}`)
         return sendWithActiveDedup(protocol, "friend", key, id, msg, decision.finalProtocol, () => {
           if (!decision.route) return originalSendMsg(msg)
           return routeDirectSend(protocol, "friend", key, id, msg, originalSendMsg)
@@ -171,6 +276,7 @@ function patchPickFriend(bot, botId, protocol) {
 
 function patchPickGroup(bot, botId, protocol) {
   if (!bot?.pickGroup || patchedGroupBots.has(bot)) return
+  cacheBotProtocol(botId, protocol)
 
   const originalPickGroup = bot.pickGroup.bind(bot)
   bot.pickGroup = groupId => {
@@ -178,11 +284,14 @@ function patchPickGroup(bot, botId, protocol) {
     if (!group?.sendMsg) return group
 
     const originalSendMsg = group.sendMsg.bind(group)
-    group.sendMsg = async msg => {
+    group.sendMsg = async (...args) => {
+      if (args.length !== 1) return originalSendMsg(...args)
+      const msg = args[0]
       const key = qqbotId(botId, groupId || group.group_id)
       const id = groupId || group.group_id
       const decision = directSendDecision(protocol, msg)
       if (decision.active) {
+        logActiveDebug("接管群聊主动消息", `${protocolName(protocol)} -> ${protocolName(decision.finalProtocol)}，路由：${decision.route ? "是" : "否"}，group:${id}`)
         return sendWithActiveDedup(protocol, "group", key, id, msg, decision.finalProtocol, () => {
           if (!decision.route) return originalSendMsg(msg)
           return routeDirectSend(protocol, "group", key, id, msg, originalSendMsg)
@@ -197,15 +306,53 @@ function patchPickGroup(bot, botId, protocol) {
   patchedGroupBots.add(bot)
 }
 
+function patchBotApi() {
+  const botProto = Bot?.constructor?.prototype
+  if (!botProto || botProto[botApiPatchFlag]) return
+
+  const originalSendFriendMsg = botProto.sendFriendMsg
+  if (originalSendFriendMsg) {
+    botProto.sendFriendMsg = async function qwildSendFriendMsg(botId, userId, ...args) {
+      if (args.length !== 1) return originalSendFriendMsg.call(this, botId, userId, ...args)
+      const protocol = protocolByBotId(botId)
+      const msg = args[0]
+      if (!protocol || isBotOnline(botId) || !canRescueOfflineActiveMessage()) {
+        return originalSendFriendMsg.call(this, botId, userId, ...args)
+      }
+
+      return routeOfflineBotApiSend(protocol, "friend", botId, userId, msg)
+    }
+  }
+
+  const originalSendGroupMsg = botProto.sendGroupMsg
+  if (originalSendGroupMsg) {
+    botProto.sendGroupMsg = async function qwildSendGroupMsg(botId, groupId, ...args) {
+      if (args.length !== 1) return originalSendGroupMsg.call(this, botId, groupId, ...args)
+      const protocol = protocolByBotId(botId)
+      const msg = args[0]
+      if (!protocol || isBotOnline(botId) || !canRescueOfflineActiveMessage()) {
+        return originalSendGroupMsg.call(this, botId, groupId, ...args)
+      }
+
+      return routeOfflineBotApiSend(protocol, "group", botId, groupId, msg)
+    }
+  }
+
+  botProto[botApiPatchFlag] = true
+}
+
 export function patchDirectSend() {
+  patchBotApi()
   for (const id of Bot?.uin || []) {
     const bot = Bot[id]
     if (isProtocol(bot, "qqbot")) {
+      cacheBotProtocol(id, "qqbot")
       patchPickFriend(bot, id, "qqbot")
       patchPickGroup(bot, id, "qqbot")
-    } else if (isProtocol(bot, "onebot")) {
-      patchPickFriend(bot, id, "onebot")
-      patchPickGroup(bot, id, "onebot")
+    } else if (isProtocol(bot, "wild")) {
+      cacheBotProtocol(id, "wild")
+      patchPickFriend(bot, id, "wild")
+      patchPickGroup(bot, id, "wild")
     }
   }
 }

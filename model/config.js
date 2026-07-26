@@ -33,19 +33,20 @@ const configFiles = {
 
 export const defaultConfig = {
   enable: true,
+  block_unselected_protocols: false,
   protocols: {
     qqbot: {
       adapter: "QQBot",
       self_id: "",
     },
-    onebot: {
-      adapter: "OneBotv11",
+    wild: {
+      adapter: "",
       self_id: "",
     },
   },
   response_prefixes: {
     qqbot: [],
-    onebot: [],
+    wild: [],
   },
   receive: {
     qqbot: {
@@ -57,7 +58,7 @@ export const defaultConfig = {
       group_mode: "white",
       group_list: [],
     },
-    onebot: {
+    wild: {
       block: false,
       command_allow_rules: defaultCommandAllowRules(),
       user_allow_list: [],
@@ -82,11 +83,11 @@ export const defaultConfig = {
     image_text: "qqbot",
     record: "",
     video: "",
-    file: "",
+    file: "wild",
     button: "qqbot",
     markdown: "qqbot",
-    node: "onebot",
-    forward: "onebot",
+    node: "wild",
+    forward: "wild",
     link: "",
     command_rules: [],
   },
@@ -100,12 +101,11 @@ export const config = structuredClone(defaultConfig)
 function defaultCommandAllowRules() {
   return [
     {
-      match: "starts",
+      match: "regex",
       texts: [
-        "#QW查看ID",
-        "#QW查询ID",
-        "#QW绑定群聊",
-        "#QW取消绑定群聊",
+        "^#[Qq][Ww](?:查看|查询)[Ii][Dd]",
+        "^#[Qq][Ww]绑定群聊",
+        "^#[Qq][Ww]取消绑定群聊",
       ],
     },
   ]
@@ -180,21 +180,25 @@ function stringifyBasicConfig() {
 # 插件总开关。关闭后不接管接收阻断和发送分流。
 enable: ${config.enable}
 
+# 阻断未接管协议：只影响群聊，非 QQBot/Wild 协议不受影响。
+block_unselected_protocols: ${config.block_unselected_protocols}
+
 # 协议识别与机器人选择。
-# adapter 一般不用改；self_id 留空时自动选择在线的对应协议机器人。
+# QQBot adapter 默认为 QQBot；Wild adapter 留空时自动选择在线的野生协议端。
+# self_id 留空时自动选择在线的对应协议机器人。
 protocols:
   qqbot:
     adapter: ${quote(config.protocols.qqbot.adapter)}
     self_id: ${quote(config.protocols.qqbot.self_id)}
-  onebot:
-    adapter: ${quote(config.protocols.onebot.adapter)}
-    self_id: ${quote(config.protocols.onebot.self_id)}
+  wild:
+    adapter: ${quote(config.protocols.wild.adapter)}
+    self_id: ${quote(config.protocols.wild.self_id)}
 
 # 响应前缀：仅群聊生效，配置后未艾特机器人时必须带前缀才会进入云崽，命中后会自动去除前缀。
 # 艾特机器人时不要求前缀；留空表示不限制。
 response_prefixes:
   qqbot: ${stringifyList(config.response_prefixes.qqbot)}
-  onebot: ${stringifyList(config.response_prefixes.onebot)}
+  wild: ${stringifyList(config.response_prefixes.wild)}
 
 # 离线处理模式：任一协议离线时，QWild 如何处理接收和发送。
 # bypass：全部旁路，接收控制和发送分流都暂停。
@@ -213,8 +217,8 @@ function stringifyReceiveConfig() {
 # black：黑名单模式，名单内阻断，名单外放行；空名单表示全部放行。
 # white：白名单模式，名单内放行，名单外阻断；空名单表示全部阻断。
 # user_allow_list：用户放行名单，命中后直接放行，不再判断用户和群聊过滤。
-# user_list：用户名单。QQBot 填 BotID:UserID，OBv11 填 QQ号。
-# group_list：群聊名单。QQBot 填 BotID:GroupID，OBv11 填 QQ群号。
+# user_list：用户名单。QQBot 填 BotID:UserID，Wild 填 QQ号。
+# group_list：群聊名单。QQBot 填 BotID:GroupID，Wild 填 QQ群号。
 # command_allow_rules：命令放行规则，会话被阻断时，命中任一 texts 命令则放行。
 qqbot:
   block: ${config.receive.qqbot.block}
@@ -224,14 +228,14 @@ qqbot:
   group_mode: ${quote(config.receive.qqbot.group_mode)}
   group_list: ${stringifyList(config.receive.qqbot.group_list)}
   command_allow_rules: ${stringifyCommandRules(config.receive.qqbot.command_allow_rules)}
-onebot:
-  block: ${config.receive.onebot.block}
-  user_allow_list: ${stringifyList(config.receive.onebot.user_allow_list)}
-  user_mode: ${quote(config.receive.onebot.user_mode)}
-  user_list: ${stringifyList(config.receive.onebot.user_list)}
-  group_mode: ${quote(config.receive.onebot.group_mode)}
-  group_list: ${stringifyList(config.receive.onebot.group_list)}
-  command_allow_rules: ${stringifyCommandRules(config.receive.onebot.command_allow_rules)}
+wild:
+  block: ${config.receive.wild.block}
+  user_allow_list: ${stringifyList(config.receive.wild.user_allow_list)}
+  user_mode: ${quote(config.receive.wild.user_mode)}
+  user_list: ${stringifyList(config.receive.wild.user_list)}
+  group_mode: ${quote(config.receive.wild.group_mode)}
+  group_list: ${stringifyList(config.receive.wild.group_list)}
+  command_allow_rules: ${stringifyCommandRules(config.receive.wild.command_allow_rules)}
 `
 }
 
@@ -264,7 +268,7 @@ forward: ${quote(config.send.forward)}
 link: ${quote(config.send.link)}
 
 # 命令分流优先级高于消息类型分流。
-# match 可选 starts / contains / equals / regex，texts 可填写多个命令，protocol 可选 qqbot / onebot / 留空。
+# match 可选 starts / contains / equals / regex，texts 可填写多个命令，protocol 可选 qqbot / wild / 留空。
 # protocol 留空表示命中后仍走原协议。
 command_rules: ${stringifyCommandRules(config.send.command_rules, true)}
 `

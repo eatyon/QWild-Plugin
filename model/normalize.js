@@ -10,7 +10,7 @@ function normalizeBoolean(value, fallback = false) {
 
 function normalizeOptionalProtocol(value) {
   value = String(value || "").trim().toLowerCase()
-  return ["qqbot", "onebot"].includes(value) ? value : ""
+  return ["qqbot", "wild"].includes(value) ? value : ""
 }
 
 function normalizeMode(value) {
@@ -89,23 +89,24 @@ function normalizeMap(value) {
 
 export function normalizeConfig(config, defaultConfig) {
   config.enable = normalizeBoolean(config.enable, true)
+  config.block_unselected_protocols = normalizeBoolean(config.block_unselected_protocols, false)
   config.protocols.qqbot.adapter = String(config.protocols.qqbot.adapter || "QQBot").trim()
-  config.protocols.onebot.adapter = String(config.protocols.onebot.adapter || "OneBotv11").trim()
+  config.protocols.wild.adapter = String(config.protocols.wild.adapter || "").trim()
   config.protocols.qqbot.self_id = String(config.protocols.qqbot.self_id || "").trim()
-  config.protocols.onebot.self_id = String(config.protocols.onebot.self_id || "").trim()
+  config.protocols.wild.self_id = String(config.protocols.wild.self_id || "").trim()
   config.response_prefixes ||= {}
   config.response_prefixes.qqbot = normalizeList(config.response_prefixes.qqbot)
-  config.response_prefixes.onebot = normalizeList(config.response_prefixes.onebot)
+  config.response_prefixes.wild = normalizeList(config.response_prefixes.wild)
   config.runtime ||= {}
   config.runtime.offline_mode = normalizeOfflineMode(config.runtime.offline_mode)
   normalizeReceive(config, defaultConfig, "qqbot")
-  normalizeReceive(config, defaultConfig, "onebot")
+  normalizeReceive(config, defaultConfig, "wild")
   const sendSource = config.send && typeof config.send === "object" ? config.send : {}
   config.send = structuredClone(defaultConfig.send)
   for (const key of Object.keys(defaultConfig.send)) {
     if (Object.hasOwn(sendSource, key)) config.send[key] = sendSource[key]
   }
-  config.send.enable = normalizeBoolean(config.send.enable, true)
+  config.send.enable = normalizeBoolean(config.send.enable, defaultConfig.send.enable)
   config.send.default = normalizeOptionalProtocol(config.send.default)
   config.send.failover = normalizeBoolean(config.send.failover, true)
   if (!config.send.active_message || typeof config.send.active_message !== "object") {

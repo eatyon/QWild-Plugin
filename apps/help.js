@@ -43,8 +43,8 @@ const helpGroup = [
         desc: "控制 QQBot 消息是否进入云崽插件",
       },
       {
-        title: "#QW阻断OBv11开启 / 关闭",
-        desc: "控制 OBv11 消息是否进入云崽插件",
+        title: "#QW阻断Wild开启 / 关闭",
+        desc: "控制 Wild 消息是否进入云崽插件",
       },
     ],
   },

@@ -4,8 +4,8 @@
 # black：黑名单模式，名单内阻断，名单外放行；空名单表示全部放行。
 # white：白名单模式，名单内放行，名单外阻断；空名单表示全部阻断。
 # user_allow_list：用户放行名单，命中后直接放行，不再判断用户和群聊过滤。
-# user_list：用户名单。QQBot 填 BotID:UserID，OBv11 填 QQ号。
-# group_list：群聊名单。QQBot 填 BotID:GroupID，OBv11 填 QQ群号。
+# user_list：用户名单。QQBot 填 BotID:UserID，Wild 填 QQ号。
+# group_list：群聊名单。QQBot 填 BotID:GroupID，Wild 填 QQ群号。
 # command_allow_rules：命令放行规则，会话被阻断时，命中任一 texts 命令则放行。
 qqbot:
   block: false
@@ -15,13 +15,12 @@ qqbot:
   group_mode: "white"
   group_list: []
   command_allow_rules:
-    - match: "starts"
+    - match: "regex"
       texts:
-        - "#QW查看ID"
-        - "#QW查询ID"
-        - "#QW绑定群聊"
-        - "#QW取消绑定群聊"
-onebot:
+        - "^#[Qq][Ww](?:查看|查询)[Ii][Dd]"
+        - "^#[Qq][Ww]绑定群聊"
+        - "^#[Qq][Ww]取消绑定群聊"
+wild:
   block: false
   user_allow_list: []
   user_mode: "black"
@@ -29,9 +28,8 @@ onebot:
   group_mode: "white"
   group_list: []
   command_allow_rules:
-    - match: "starts"
+    - match: "regex"
       texts:
-        - "#QW查看ID"
-        - "#QW查询ID"
-        - "#QW绑定群聊"
-        - "#QW取消绑定群聊"
+        - "^#[Qq][Ww](?:查看|查询)[Ii][Dd]"
+        - "^#[Qq][Ww]绑定群聊"
+        - "^#[Qq][Ww]取消绑定群聊"

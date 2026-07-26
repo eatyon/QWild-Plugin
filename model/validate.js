@@ -1,4 +1,4 @@
-import { isQQBotId, isOneBotId, qqbotBotId, qqbotInnerId } from "./identity.js"
+import { isQQBotId, isQQId, qqbotBotId, qqbotInnerId } from "./identity.js"
 import { normalizeList } from "./normalize.js"
 
 function warn(message) {
@@ -10,7 +10,7 @@ function isBlank(value) {
 }
 
 function isValidProtocol(value) {
-  return ["qqbot", "onebot"].includes(String(value || "").trim().toLowerCase())
+  return ["qqbot", "wild"].includes(String(value || "").trim().toLowerCase())
 }
 
 function validateProtocolField(path, value) {
@@ -58,14 +58,14 @@ function validateIdentityMap(type, map) {
     if (!isQQBotId(sourceId) || !botId || !id) {
       warn(`${label}格式异常：${source} 应为 BotID:ID，当前为 ${from}`)
     } else {
-      if (!isOneBotId(botId)) warn(`${label}格式异常：BotID 建议为纯数字，当前为 ${botId}`)
+      if (!isQQId(botId)) warn(`${label}格式异常：BotID 建议为纯数字，当前为 ${botId}`)
       const key = `${botId}:${targetId}`
       const previous = seenByBot.get(key)
       if (previous) warn(`${label}配置疑似重复：同一 BotID 下多个 ${source} 映射到 ${targetId}：${previous}、${from}`)
       else seenByBot.set(key, from)
     }
 
-    if (!isOneBotId(targetId)) warn(`${label}格式异常：${target} 应为纯数字，当前为 ${to}`)
+    if (!isQQId(targetId)) warn(`${label}格式异常：${target} 应为纯数字，当前为 ${to}`)
   }
 }
 
@@ -89,7 +89,7 @@ export function validateConfig(config) {
 
   validateCommandRules("命令分流", config.send?.command_rules, true)
   validateCommandRules("QQBot 命令放行规则", config.receive?.qqbot?.command_allow_rules)
-  validateCommandRules("OBv11 命令放行规则", config.receive?.onebot?.command_allow_rules)
+  validateCommandRules("Wild 命令放行规则", config.receive?.wild?.command_allow_rules)
   validateIdentityMap("group", config.groups)
   validateIdentityMap("user", config.users)
 }

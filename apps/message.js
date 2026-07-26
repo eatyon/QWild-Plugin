@@ -111,7 +111,7 @@ export function targetProtocol(msg, e) {
 }
 
 export function otherProtocol(protocol) {
-  return protocol === "onebot" ? "qqbot" : "onebot"
+  return protocol === "wild" ? "qqbot" : "wild"
 }
 
 export function isSendSuccess(ret) {

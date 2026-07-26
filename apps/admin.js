@@ -1,8 +1,8 @@
 import { createRequire } from "node:module"
 import common from "../../../lib/common/common.js"
 import { config, configSave } from "../model/config.js"
-import { eventProtocol, findBot, protocolStatus } from "./protocol.js"
-import { findAllByValue, findMapping, isOneBotId, isQQBotId, parseMappingPair, qqbotId } from "../model/identity.js"
+import { adapterName, eventProtocol, findBot, protocolStatus } from "./protocol.js"
+import { findAllByValue, findMapping, isQQId, isQQBotId, parseMappingPair, qqbotId } from "../model/identity.js"
 
 const require = createRequire(import.meta.url)
 const pkg = require("../package.json")
@@ -42,15 +42,15 @@ function statusType(value) {
 function countMap(map) {
   return Object.keys(map || {}).length
 }
-function protocolName(protocol) {
+function eventProtocolName(e, protocol = eventProtocol(e)) {
   if (protocol === "qqbot") return "QQBot"
-  if (protocol === "onebot") return "OBv11"
+  if (protocol === "wild") return adapterName(e?.bot) || "Wild"
   return "未知"
 }
 
 function routeName(protocol) {
   if (protocol === "qqbot") return "QQBot"
-  if (protocol === "onebot") return "OBv11"
+  if (protocol === "wild") return "Wild"
   return "原协议"
 }
 
@@ -83,7 +83,7 @@ function atIds(e, protocol = eventProtocol(e)) {
 }
 
 function otherProtocol(protocol) {
-  return protocol === "qqbot" ? "OBv11" : "QQBot"
+  return protocol === "qqbot" ? "Wild" : "QQBot"
 }
 
 function mapLabel(type) {
@@ -91,14 +91,14 @@ function mapLabel(type) {
 }
 
 function mapText(pair) {
-  return `${pair.qqbot} = ${pair.onebot}`
+  return `${pair.qqbot} = ${pair.wild}`
 }
 
 function searchMap(map, keyword) {
   keyword = String(keyword || "")
   return Object.entries(map || {})
-    .filter(([qqbot, onebot]) => qqbot.includes(keyword) || String(onebot).includes(keyword))
-    .map(([qqbot, onebot]) => ({ qqbot, onebot }))
+    .filter(([qqbot, wild]) => qqbot.includes(keyword) || String(wild).includes(keyword))
+    .map(([qqbot, wild]) => ({ qqbot, wild }))
 }
 
 function mapLines(list) {
@@ -117,7 +117,7 @@ function hasCurrentQQBotValue(map, value) {
 }
 
 function hasCurrentMapping(e, protocol) {
-  if (protocol !== "onebot") return false
+  if (protocol !== "wild") return false
   if (isGroup(e)) return hasCurrentQQBotValue(config.groups, currentId(e, "group", protocol))
   if (isPrivate(e)) return hasCurrentQQBotValue(config.users, currentId(e, "user", protocol))
   return false
@@ -136,15 +136,15 @@ function currentRouteState(e, protocol) {
 
 function showIdKey(e, protocol) {
   if (isGroup(e)) {
-    const onebotGroupId = protocol === "onebot"
+    const wildGroupId = protocol === "wild"
       ? currentId(e, "group", protocol)
       : config.groups[currentId(e, "group", protocol)] || currentId(e, "group", protocol)
-    return `group:${onebotGroupId}`
+    return `group:${wildGroupId}`
   }
-  const onebotUserId = protocol === "onebot"
+  const wildUserId = protocol === "wild"
     ? currentId(e, "user", protocol)
     : config.users[currentId(e, "user", protocol)] || currentId(e, "user", protocol)
-  return `private:${onebotUserId}`
+  return `private:${wildUserId}`
 }
 
 function markShowId(e, protocol) {
@@ -165,7 +165,7 @@ function sleep(ms) {
 function addMapping(type, pair) {
   const map = type === "group" ? config.groups : config.users
   if (map[pair.qqbot]) return false
-  map[pair.qqbot] = pair.onebot
+  map[pair.qqbot] = pair.wild
   return true
 }
 
@@ -175,7 +175,7 @@ function deleteMapping(type, id) {
   if (!found) return null
   if (found.ambiguous) return found
   delete map[found[0]]
-  return { qqbot: found[0], onebot: found[1] }
+  return { qqbot: found[0], wild: found[1] }
 }
 
 function actionArg(msg, prefix) {
@@ -221,8 +221,8 @@ export class qwildAdmin extends plugin {
           permission: "master",
         },
         {
-          reg: "^#[Qq][Ww]阻断(?:OBv11|OneBotv11)(开启|关闭)$",
-          fnc: "setOneBotBlock",
+          reg: "^#[Qq][Ww]阻断Wild(开启|关闭)$",
+          fnc: "setWildBlock",
           permission: "master",
         },
         {
@@ -282,17 +282,17 @@ export class qwildAdmin extends plugin {
     const protocol = eventProtocol(this.e)
     const status = protocolStatus()
     const qqbotOnline = status.qqbot
-    const onebotOnline = status.onebot
+    const wildOnline = status.wild
     const statusGroups = [
       {
         group: "运行状态",
         list: [
           { title: "总开关", value: onOff(config.enable), type: statusType(config.enable) },
-          { title: "当前协议", value: protocolName(protocol), type: protocol ? "ok" : "off" },
+          { title: "接收协议", value: eventProtocolName(this.e, protocol), type: protocol ? "ok" : "off" },
           { title: "QQBot", value: botStatus("qqbot"), type: statusType(qqbotOnline) },
           { title: "QQBot 账号", value: botId("qqbot"), type: qqbotOnline ? "ok" : "off" },
-          { title: "OBv11", value: botStatus("onebot"), type: statusType(onebotOnline) },
-          { title: "OBv11 账号", value: botId("onebot"), type: onebotOnline ? "ok" : "off" },
+          { title: "Wild", value: botStatus("wild"), type: statusType(wildOnline) },
+          { title: "Wild 账号", value: botId("wild"), type: wildOnline ? "ok" : "off" },
         ],
       },
       {
@@ -301,7 +301,7 @@ export class qwildAdmin extends plugin {
           { title: "发送分流", value: onOff(config.send.enable), type: statusType(config.send.enable) },
           { title: "当前会话接管", ...currentRouteState(this.e, protocol) },
           { title: "QQBot 接收阻断", value: onOff(config.receive.qqbot.block), type: statusType(config.receive.qqbot.block) },
-          { title: "OBv11 接收阻断", value: onOff(config.receive.onebot.block), type: statusType(config.receive.onebot.block) },
+          { title: "Wild 接收阻断", value: onOff(config.receive.wild.block), type: statusType(config.receive.wild.block) },
           { title: "主动消息接管", value: onOff(config.send.active_message?.enable), type: statusType(config.send.active_message?.enable) },
           { title: "发送失败切换", value: onOff(config.send.failover), type: statusType(config.send.failover) },
         ],
@@ -369,16 +369,15 @@ export class qwildAdmin extends plugin {
     let replyCurrent = false
     if (protocol === "qqbot") {
       markShowId(this.e, protocol)
-    } else if (protocol === "onebot" && findBot("qqbot") && hasCurrentMapping(this.e, protocol)) {
+    } else if (protocol === "wild" && findBot("qqbot") && hasCurrentMapping(this.e, protocol)) {
       await sleep(2000)
       if (hasRecentShowId(this.e, protocol)) return true
       replyCurrent = true
-    } else if (protocol === "onebot") {
+    } else if (protocol === "wild") {
       replyCurrent = true
     }
 
-    const protocolName = protocol === "qqbot" ? "QQBot" : protocol === "onebot" ? "OBv11" : "未知"
-    const lines = [`当前协议：${protocolName}`]
+    const lines = [`当前协议：${eventProtocolName(this.e, protocol)}`]
 
     if (isGroup(this.e)) lines.push(`群聊ID：${currentId(this.e, "group", protocol)}`)
     if (this.e?.user_id) lines.push(`用户ID：${currentId(this.e, "user", protocol)}`)
@@ -423,9 +422,9 @@ export class qwildAdmin extends plugin {
     return this.saveAndReply(`QWild QQBot 接收阻断已${onOff(config.receive.qqbot.block)}`)
   }
 
-  async setOneBotBlock() {
-    config.receive.onebot.block = setByAction(this.e.msg.match(/(开启|关闭)$/)?.[1])
-    return this.saveAndReply(`QWild OBv11 接收阻断已${onOff(config.receive.onebot.block)}`)
+  async setWildBlock() {
+    config.receive.wild.block = setByAction(this.e.msg.match(/(开启|关闭)$/)?.[1])
+    return this.saveAndReply(`QWild Wild 接收阻断已${onOff(config.receive.wild.block)}`)
   }
 
   async bind(type) {
@@ -437,10 +436,10 @@ export class qwildAdmin extends plugin {
     pendingBinds[type][protocol] = currentId(this.e, type, protocol)
     pendingBinds[type].time = Date.now()
 
-    if (pendingBinds[type].qqbot && pendingBinds[type].onebot) {
+    if (pendingBinds[type].qqbot && pendingBinds[type].wild) {
       const pair = {
         qqbot: pendingBinds[type].qqbot,
-        onebot: pendingBinds[type].onebot,
+        wild: pendingBinds[type].wild,
       }
       pendingBinds[type] = {}
       if (!addMapping(type, pair)) {
@@ -500,12 +499,12 @@ export class qwildAdmin extends plugin {
     arg = String(arg || "").trim()
     if (!isPrivate(this.e)) return { error: `请在私聊中使用：${command} 另一端用户ID` }
     if (protocol === "qqbot") {
-      if (!isOneBotId(arg)) return { error: "当前已是 QQBot 私聊，请填写 QQ号" }
-      return { qqbot: currentId(this.e, "user", protocol), onebot: arg }
+      if (!isQQId(arg)) return { error: "当前已是 QQBot 私聊，请填写 QQ号" }
+      return { qqbot: currentId(this.e, "user", protocol), wild: arg }
     }
-    if (protocol === "onebot") {
-      if (!isQQBotId(arg)) return { error: "当前已是 OBv11 私聊，请填写完整QQBot用户ID：BotID:UserID" }
-      return { qqbot: arg, onebot: currentId(this.e, "user", protocol) }
+    if (protocol === "wild") {
+      if (!isQQBotId(arg)) return { error: "当前已是 Wild 私聊，请填写完整QQBot用户ID：BotID:UserID" }
+      return { qqbot: arg, wild: currentId(this.e, "user", protocol) }
     }
     return { error: "未识别当前协议" }
   }
@@ -526,7 +525,7 @@ export class qwildAdmin extends plugin {
       if (type === "group" && !isGroup(this.e)) return this.reply("请在群聊中使用，或填写群ID", true)
       if (type === "user" && !isPrivate(this.e)) return this.reply("请在私聊中使用，或填写用户ID", true)
       id = currentId(this.e, type, protocol)
-    } else if (!id.includes("=") && !isOneBotId(id) && !isQQBotId(id)) {
+    } else if (!id.includes("=") && !isQQId(id) && !isQQBotId(id)) {
       return this.reply(`请使用完整QQBot${mapLabel(type)}ID：BotID:ID`, true)
     }
 

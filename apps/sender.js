@@ -32,7 +32,7 @@ function qqbotUserKey(e) {
 function mappedAtId(id, protocol, botId = "") {
   id = String(id || "")
   if (!id) return ""
-  if (protocol === "onebot") return mappedValue(config.users, qqbotId(botId, id)) || mappedValue(config.users, id)
+  if (protocol === "wild") return mappedValue(config.users, qqbotId(botId, id)) || mappedValue(config.users, id)
   return reverseMappedValue(config.users, id, botId)
 }
 
@@ -64,46 +64,46 @@ function mapAtMsg(msg, protocol, botId = "") {
   return next
 }
 
-export async function sendQQBotGroupByOneBotId(onebotGroupId, msg) {
+export async function sendQQBotGroupByWildId(wildGroupId, msg) {
   const qqbot = findBot("qqbot")
   if (!qqbot?.pickGroup) throw new Error("QQBot 未在线")
-  const qqbotGroupId = reverseMappedValue(config.groups, onebotGroupId, botSelfId(qqbot))
-  if (!qqbotGroupId) throw new MissingIdentityMapError(onebotGroupId)
+  const qqbotGroupId = reverseMappedValue(config.groups, wildGroupId, botSelfId(qqbot))
+  if (!qqbotGroupId) throw new MissingIdentityMapError(wildGroupId)
 
   const group = qqbot.pickGroup(qqbotGroupId)
   const ret = await withNoRoute(() => group.sendMsg(stripReply(mapAtMsg(msg, "qqbot", botSelfId(qqbot)))))
   return recordRoutedMessage(ret, group)
 }
 
-export async function sendOneBotGroupByQQBotId(qqbotGroupId, msg) {
-  const onebotGroupId = mappedValue(config.groups, qqbotGroupId)
-  if (!onebotGroupId) throw new MissingIdentityMapError(qqbotGroupId)
+export async function sendWildGroupByQQBotId(qqbotGroupId, msg) {
+  const wildGroupId = mappedValue(config.groups, qqbotGroupId)
+  if (!wildGroupId) throw new MissingIdentityMapError(qqbotGroupId)
 
-  const onebot = findBot("onebot")
-  if (!onebot?.pickGroup) throw new Error("OneBotv11 未在线")
+  const wild = findBot("wild")
+  if (!wild?.pickGroup) throw new Error("Wild 未在线")
 
-  const group = onebot.pickGroup(onebotGroupId)
-  const ret = await withNoRoute(() => group.sendMsg(stripReply(mapAtMsg(msg, "onebot", qqbotBotId(qqbotGroupId)))))
+  const group = wild.pickGroup(wildGroupId)
+  const ret = await withNoRoute(() => group.sendMsg(stripReply(mapAtMsg(msg, "wild", qqbotBotId(qqbotGroupId)))))
   return recordRoutedMessage(ret, group)
 }
 
-export async function sendOneBotFriendByQQBotId(qqbotUserId, msg) {
-  const onebotUserId = mappedValue(config.users, qqbotUserId)
-  if (!onebotUserId) throw new MissingIdentityMapError(qqbotUserId)
+export async function sendWildFriendByQQBotId(qqbotUserId, msg) {
+  const wildUserId = mappedValue(config.users, qqbotUserId)
+  if (!wildUserId) throw new MissingIdentityMapError(qqbotUserId)
 
-  const onebot = findBot("onebot")
-  if (!onebot?.pickFriend) throw new Error("OneBotv11 未在线")
+  const wild = findBot("wild")
+  if (!wild?.pickFriend) throw new Error("Wild 未在线")
 
-  const friend = onebot.pickFriend(onebotUserId)
-  const ret = await withNoRoute(() => friend.sendMsg(stripReply(mapAtMsg(msg, "onebot", qqbotBotId(qqbotUserId)))))
+  const friend = wild.pickFriend(wildUserId)
+  const ret = await withNoRoute(() => friend.sendMsg(stripReply(mapAtMsg(msg, "wild", qqbotBotId(qqbotUserId)))))
   return recordRoutedMessage(ret, friend)
 }
 
-export async function sendQQBotFriendByOneBotId(onebotUserId, msg) {
+export async function sendQQBotFriendByWildId(wildUserId, msg) {
   const qqbot = findBot("qqbot")
   if (!qqbot?.pickFriend) throw new Error("QQBot 未在线")
-  const qqbotUserId = reverseMappedValue(config.users, onebotUserId, botSelfId(qqbot))
-  if (!qqbotUserId) throw new MissingIdentityMapError(onebotUserId)
+  const qqbotUserId = reverseMappedValue(config.users, wildUserId, botSelfId(qqbot))
+  if (!qqbotUserId) throw new MissingIdentityMapError(wildUserId)
 
   const friend = qqbot.pickFriend(qqbotUserId)
   const ret = await withNoRoute(() => friend.sendMsg(stripReply(mapAtMsg(msg, "qqbot", botSelfId(qqbot)))))
@@ -111,21 +111,21 @@ export async function sendQQBotFriendByOneBotId(onebotUserId, msg) {
 }
 
 async function sendQQBotFriend(e, msg) {
-  return sendQQBotFriendByOneBotId(e?.user_id, msg)
+  return sendQQBotFriendByWildId(e?.user_id, msg)
 }
 
-async function sendOneBotFriend(e, msg) {
-  return sendOneBotFriendByQQBotId(qqbotUserKey(e), msg)
+async function sendWildFriend(e, msg) {
+  return sendWildFriendByQQBotId(qqbotUserKey(e), msg)
 }
 
 export async function sendQQBot(e, msg) {
-  if (e?.isGroup || e?.message_type === "group") return sendQQBotGroupByOneBotId(e?.group_id, msg)
+  if (e?.isGroup || e?.message_type === "group") return sendQQBotGroupByWildId(e?.group_id, msg)
   if (e?.isPrivate || e?.message_type === "private") return sendQQBotFriend(e, msg)
   throw new MissingIdentityMapError(e?.group_id || e?.user_id || "unknown")
 }
 
-export async function sendOneBot(e, msg) {
-  if (e?.isGroup || e?.message_type === "group") return sendOneBotGroupByQQBotId(qqbotGroupKey(e), msg)
-  if (e?.isPrivate || e?.message_type === "private") return sendOneBotFriend(e, msg)
+export async function sendWild(e, msg) {
+  if (e?.isGroup || e?.message_type === "group") return sendWildGroupByQQBotId(qqbotGroupKey(e), msg)
+  if (e?.isPrivate || e?.message_type === "private") return sendWildFriend(e, msg)
   throw new MissingIdentityMapError(e?.group_id || e?.user_id || "unknown")
 }

@@ -12,6 +12,23 @@ function adapterName(bot) {
   return bot?.adapter?.name || bot?.version?.name || bot?.adapter?.id || bot?.version?.id
 }
 
+const wildAdapters = new Set(["OneBotv11", "OPQBot", "Milky", "ICQQ"])
+
+function isWildAdapter(adapter) {
+  return wildAdapters.has(String(adapter || ""))
+}
+
+function matchProtocolBot(bot, protocol) {
+  const adapter = adapterName(bot)
+  if (protocol === "wild") {
+    const expected = config.protocols.wild?.adapter
+    if (expected) return adapter === expected || bot?.version?.id === expected || bot?.adapter?.id === expected
+    return isWildAdapter(adapter) || isWildAdapter(bot?.version?.id) || isWildAdapter(bot?.adapter?.id)
+  }
+  const expected = config.protocols[protocol]?.adapter
+  return adapter === expected || bot?.version?.id === expected || bot?.adapter?.id === expected
+}
+
 function botOptions(protocol) {
   const ids = globalThis.Bot?.uin || []
   return [
@@ -20,7 +37,7 @@ function botOptions(protocol) {
       .map(id => {
         const bot = globalThis.Bot?.[id]
         const adapter = adapterName(bot)
-        if (protocol && adapter !== config.protocols[protocol]?.adapter) return false
+        if (protocol && !matchProtocolBot(bot, protocol)) return false
         return makeOption([adapter, bot?.nickname].filter(Boolean).join(" "), id)
       })
       .filter(Boolean),
@@ -31,8 +48,8 @@ function protocolBotIds(protocol) {
   const ids = Array.from(globalThis.Bot?.uin || [])
   const rule = config.protocols[protocol] || {}
   const selected = String(rule.self_id || "")
-  if (selected) return ids.filter(id => String(id) === selected)
-  return ids.filter(id => adapterName(globalThis.Bot?.[id]) === rule.adapter)
+  if (selected) return ids.filter(id => String(id) === selected && matchProtocolBot(globalThis.Bot?.[id], protocol))
+  return ids.filter(id => matchProtocolBot(globalThis.Bot?.[id], protocol))
 }
 
 function groupOptions(protocol) {
@@ -44,7 +61,7 @@ function groupOptions(protocol) {
     if (!map?.entries) continue
     for (const [groupId, item] of map.entries()) {
       const value = String(groupId ?? "")
-      if (protocol === "onebot") {
+      if (protocol === "wild") {
         if (seen.has(value)) continue
         seen.add(value)
       }
@@ -63,7 +80,7 @@ function userOptions(protocol) {
     if (!map?.entries) continue
     for (const [userId, item] of map.entries()) {
       const value = String(userId ?? "")
-      if (protocol === "onebot") {
+      if (protocol === "wild") {
         if (seen.has(value)) continue
         seen.add(value)
       }
@@ -74,7 +91,7 @@ function userOptions(protocol) {
 }
 
 function mappingList(source = {}) {
-  return Object.entries(source).map(([qqbot, onebot]) => ({ qqbot, onebot }))
+  return Object.entries(source).map(([qqbot, wild]) => ({ qqbot, wild }))
 }
 
 function commandList(list = []) {
@@ -126,9 +143,9 @@ function protocolOptions(first = "qqbot") {
   const options = [
     { label: "不指定", value: "" },
     { label: "QQBot", value: "qqbot" },
-    { label: "OneBotv11", value: "onebot" },
+    { label: "Wild", value: "wild" },
   ]
-  if (first !== "onebot") return options
+  if (first !== "wild") return options
   return [options[0], options[2], options[1]]
 }
 
@@ -151,7 +168,7 @@ function offlineModeOptions() {
 }
 
 function receiveSchemas(protocol, title, adapterTitle) {
-  const displayTitle = adapterTitle === "OneBotv11" ? "OBv11" : adapterTitle
+  const displayTitle = adapterTitle
   return [
     {
       component: "SOFT_GROUP_BEGIN",
@@ -249,8 +266,8 @@ function applyMap(value) {
   const map = {}
   for (const item of Array.isArray(value) ? value : []) {
     const qqbot = String(item?.qqbot || "").trim()
-    const onebot = String(item?.onebot || "").trim()
-    if (qqbot && onebot) map[qqbot] = onebot
+    const wild = String(item?.wild || "").trim()
+    if (qqbot && wild) map[qqbot] = wild
   }
   return map
 }
@@ -272,7 +289,7 @@ function applySendCommandList(value) {
     .map(item => ({
       match: ["starts", "contains", "equals", "regex"].includes(item?.match) ? item.match : "starts",
       texts: commandTexts(item?.texts),
-      protocol: ["", "qqbot", "onebot"].includes(item?.protocol) ? item.protocol : "",
+      protocol: ["", "qqbot", "wild"].includes(item?.protocol) ? item.protocol : "",
     }))
     .filter(item => item.texts.length)
 }
@@ -291,8 +308,14 @@ function applyData(data = {}) {
       config.receive.qqbot.command_allow_rules = applyCommandList(value)
       continue
     }
-    if (key === "onebotCommandAllowRules") {
-      config.receive.onebot.command_allow_rules = applyCommandList(value)
+    if (key === "wildCommandAllowRules") {
+      config.receive.wild.command_allow_rules = applyCommandList(value)
+      continue
+    }
+    if (key === "protocols.wild.self_id") {
+      const id = String(value || "")
+      config.protocols.wild.self_id = id
+      config.protocols.wild.adapter = id ? String(adapterName(globalThis.Bot?.[id]) || "") : ""
       continue
     }
     if (key === "sendCommandRules") {
@@ -321,7 +344,7 @@ export function supportGuoba() {
       link: "https://github.com/eatyon/QWild-Plugin",
       isV3: true,
       isV2: false,
-      description: "QQBot 和 OneBot v11 双协议接收控制与发送分流插件",
+      description: "QQBot 和 Wild 双协议接收控制与发送分流插件",
       showInMenu: "auto",
       icon: "mdi:routes",
       iconColor: "#722ed1",
@@ -339,6 +362,12 @@ export function supportGuoba() {
           bottomHelpMessage: "插件总开关，关闭后不接管接收和发送",
         },
         {
+          field: "block_unselected_protocols",
+          label: "阻断未接管协议",
+          component: "Switch",
+          bottomHelpMessage: "只阻断未被 QQBot/Wild 机器人选择接管的群消息",
+        },
+        {
           field: "runtime.offline_mode",
           label: "离线处理模式",
           component: "Select",
@@ -352,18 +381,20 @@ export function supportGuoba() {
           field: "protocols.qqbot.self_id",
           label: "QQBot 机器人",
           component: "Select",
+          helpMessage: "QQBot 指官方 QQ 机器人协议端；自动选择会使用第一个在线 QQBot 账号，指定后只接管该账号",
           bottomHelpMessage: "自动选择或指定要接管的 QQBot 账号",
           componentProps: {
             options: botOptions("qqbot"),
           },
         },
         {
-          field: "protocols.onebot.self_id",
-          label: "OBv11 机器人",
+          field: "protocols.wild.self_id",
+          label: "Wild 机器人",
           component: "Select",
-          bottomHelpMessage: "自动选择或指定要接管的 OBv11 账号",
+          helpMessage: "Wild 指 OneBotv11、OPQBot、Milky、ICQQ 第三方 QQ 协议端；自动选择会使用第一个在线 Wild 账号，指定后只接管该账号",
+          bottomHelpMessage: "自动选择或指定要接管的 Wild 账号",
           componentProps: {
-            options: botOptions("onebot"),
+            options: botOptions("wild"),
           },
         },
         {
@@ -377,8 +408,8 @@ export function supportGuoba() {
           },
         },
         {
-          field: "response_prefixes.onebot",
-          label: "OBv11 响应前缀",
+          field: "response_prefixes.wild",
+          label: "Wild 响应前缀",
           component: "GTags",
           bottomHelpMessage: "仅群聊生效，未艾特机器人时命中前缀才会进入云崽；命中后自动去除前缀",
           componentProps: {
@@ -387,7 +418,7 @@ export function supportGuoba() {
           },
         },
         ...receiveSchemas("qqbot", "QQBot 接收控制", "QQBot"),
-        ...receiveSchemas("onebot", "OBv11 接收控制", "OneBotv11"),
+        ...receiveSchemas("wild", "Wild 接收控制", "Wild"),
         {
           component: "SOFT_GROUP_BEGIN",
           label: "发送分流",
@@ -435,7 +466,7 @@ export function supportGuoba() {
                 component: "Select",
                 required: true,
                 componentProps: {
-                  options: protocolOptions("onebot"),
+                  options: protocolOptions("wild"),
                 },
               },
             ],
@@ -453,10 +484,10 @@ export function supportGuoba() {
         sendSchema("send.file", "文件消息"),
         sendSchema("send.button", "按钮消息"),
         sendSchema("send.markdown", "Markdown 消息"),
-        sendSchema("send.node", "合并转发消息", "onebot"),
-        sendSchema("send.forward", "Forward 消息", "onebot"),
-        sendSchema("send.link", "链接消息", "onebot", "文本中包含 http/https 或 QQ 易识别链接格式时命中，如 d.Mov、1.cn"),
-        sendSchema("send.default", "未知类型", "onebot", "无法识别具体类型时使用，不指定则走原协议"),
+        sendSchema("send.node", "合并转发消息", "wild"),
+        sendSchema("send.forward", "Forward 消息", "wild"),
+        sendSchema("send.link", "链接消息", "wild", "文本中包含 http/https 或 QQ 易识别链接格式时命中，如 d.Mov、1.cn"),
+        sendSchema("send.default", "未知类型", "wild", "无法识别具体类型时使用，不指定则走原协议"),
         {
           component: "SOFT_GROUP_BEGIN",
           label: "身份映射",
@@ -479,12 +510,12 @@ export function supportGuoba() {
                 },
               },
               {
-                field: "onebot",
+                field: "wild",
                 label: "群号",
                 component: "AutoComplete",
                 required: true,
                 componentProps: {
-                  options: groupOptions("onebot"),
+                  options: groupOptions("wild"),
                 },
               },
             ],
@@ -508,12 +539,12 @@ export function supportGuoba() {
                 },
               },
               {
-                field: "onebot",
+                field: "wild",
                 label: "QQ号",
                 component: "AutoComplete",
                 required: true,
                 componentProps: {
-                  options: userOptions("onebot"),
+                  options: userOptions("wild"),
                 },
               },
             ],
@@ -526,7 +557,7 @@ export function supportGuoba() {
           groupList: mappingList(config.groups),
           userList: mappingList(config.users),
           qqbotCommandAllowRules: commandList(config.receive.qqbot.command_allow_rules),
-          onebotCommandAllowRules: commandList(config.receive.onebot.command_allow_rules),
+          wildCommandAllowRules: commandList(config.receive.wild.command_allow_rules),
           sendCommandRules: sendCommandList(config.send.command_rules),
         }
       },

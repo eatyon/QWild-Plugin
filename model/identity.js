@@ -18,7 +18,7 @@ export function isQQBotId(id) {
   return /^[^:\s]+:.+$/.test(String(id || ""))
 }
 
-export function isOneBotId(id) {
+export function isQQId(id) {
   return /^\d+$/.test(String(id || ""))
 }
 
@@ -51,8 +51,8 @@ export function parseMappingPair(text) {
   if (parts.length !== 2) return null
 
   const [left, right] = parts
-  if (isQQBotId(left) && isOneBotId(right)) return { qqbot: left, onebot: right }
-  if (isQQBotId(right) && isOneBotId(left)) return { qqbot: right, onebot: left }
+  if (isQQBotId(left) && isQQId(right)) return { qqbot: left, wild: right }
+  if (isQQBotId(right) && isQQId(left)) return { qqbot: right, wild: left }
   return null
 }
 
@@ -62,7 +62,7 @@ export function findMapping(map, id) {
   if (id.includes("=")) {
     const pair = parseMappingPair(id)
     if (!pair) return null
-    return String(map?.[pair.qqbot] || "") === pair.onebot ? [pair.qqbot, pair.onebot] : null
+    return String(map?.[pair.qqbot] || "") === pair.wild ? [pair.qqbot, pair.wild] : null
   }
   if (map?.[id]) return [id, map[id]]
   if (isQQBotId(id)) return null
