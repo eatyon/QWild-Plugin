@@ -84,6 +84,10 @@ function logOfflineState(status = protocolStatus(), mode = offlineMode()) {
   const offline = hasOfflineProtocol(status)
   const key = offline ? `${offlineReason(status)}:${mode}` : "online"
   if (lastOfflineLogKey === key) return
+  if (!lastOfflineLogKey && !offline) {
+    lastOfflineLogKey = key
+    return
+  }
   lastOfflineLogKey = key
 
   if (offline) {

@@ -1,6 +1,21 @@
 const recalledMessages = new Map()
 const patchedRecallTargets = new WeakSet()
-const RECALL_TTL = 30 * 60 * 1000
+const recallTTL = 30 * 60 * 1000
+const recallMax = 1000
+
+function deleteRecalledMessage(id) {
+  const item = recalledMessages.get(id)
+  item?.timer && clearTimeout(item.timer)
+  recalledMessages.delete(id)
+}
+
+function trimRecallCache() {
+  while (recalledMessages.size > recallMax) {
+    const oldest = recalledMessages.keys().next().value
+    if (oldest === undefined) break
+    deleteRecalledMessage(oldest)
+  }
+}
 
 export function messageIds(ret, ids = []) {
   if (!ret) return ids
@@ -22,9 +37,11 @@ export function recordRoutedMessage(ret, target) {
   if (!target?.recallMsg) return ret
   const recall = target.recallMsg.bind(target)
   for (const id of new Set(messageIds(ret))) {
-    recalledMessages.set(id, { recall })
-    const timer = setTimeout(() => recalledMessages.delete(id), RECALL_TTL)
+    deleteRecalledMessage(id)
+    const timer = setTimeout(() => deleteRecalledMessage(id), recallTTL)
     timer.unref?.()
+    recalledMessages.set(id, { recall, timer })
+    trimRecallCache()
   }
   return ret
 }
@@ -36,7 +53,7 @@ export async function recallRoutedMessage(messageId) {
 
   try {
     await item.recall(id)
-    recalledMessages.delete(id)
+    deleteRecalledMessage(id)
     return true
   } catch {
     return false

@@ -98,6 +98,11 @@ function canRescueOfflineActiveMessage() {
   return ["bypass_active", "block_active"].includes(offlineMode())
 }
 
+function canRouteBotApiActiveMessage() {
+  if (isNoRoute() || getCurrentEvent()) return false
+  return Boolean(config.enable && config.send?.enable && config.send.active_message?.enable)
+}
+
 function normalizedTarget(protocol, type, key, id) {
   if (type === "group") {
     if (protocol === "qqbot") {
@@ -242,6 +247,20 @@ async function routeOfflineBotApiSend(protocol, type, botId, id, msg) {
   })
 }
 
+async function routeBotApiSend(protocol, type, botId, id, msg, originalSendMsg) {
+  const key = protocol === "qqbot" ? qqbotId(botId, id) : id
+  const decision = directSendDecision(protocol, msg)
+  if (decision.active) {
+    logActiveDebug("接管主动消息", `${protocolName(protocol)} -> ${protocolName(decision.finalProtocol)}，路由：${decision.route ? "是" : "否"}，${type}:${id}`)
+    return sendWithActiveDedup(protocol, type, key, id, msg, decision.finalProtocol, () => {
+      if (!decision.route) return originalSendMsg(msg)
+      return routeDirectSend(protocol, type, key, id, msg, originalSendMsg)
+    })
+  }
+  if (!decision.route) return originalSendMsg(msg)
+  return routeDirectSend(protocol, type, key, id, msg, originalSendMsg)
+}
+
 function patchPickFriend(bot, botId, protocol) {
   if (!bot?.pickFriend || patchedFriendBots.has(bot)) return
   cacheBotProtocol(botId, protocol)
@@ -316,11 +335,16 @@ function patchBotApi() {
       if (args.length !== 1) return originalSendFriendMsg.call(this, botId, userId, ...args)
       const protocol = protocolByBotId(botId)
       const msg = args[0]
-      if (!protocol || isBotOnline(botId) || !canRescueOfflineActiveMessage()) {
+      if (!protocol || !canRouteBotApiActiveMessage()) {
         return originalSendFriendMsg.call(this, botId, userId, ...args)
       }
 
-      return routeOfflineBotApiSend(protocol, "friend", botId, userId, msg)
+      if (!isBotOnline(botId) && canRescueOfflineActiveMessage()) {
+        return routeOfflineBotApiSend(protocol, "friend", botId, userId, msg)
+      }
+
+      const originalSendMsg = sendMsg => withNoRoute(() => originalSendFriendMsg.call(this, botId, userId, sendMsg))
+      return routeBotApiSend(protocol, "friend", botId, userId, msg, originalSendMsg)
     }
   }
 
@@ -330,11 +354,16 @@ function patchBotApi() {
       if (args.length !== 1) return originalSendGroupMsg.call(this, botId, groupId, ...args)
       const protocol = protocolByBotId(botId)
       const msg = args[0]
-      if (!protocol || isBotOnline(botId) || !canRescueOfflineActiveMessage()) {
+      if (!protocol || !canRouteBotApiActiveMessage()) {
         return originalSendGroupMsg.call(this, botId, groupId, ...args)
       }
 
-      return routeOfflineBotApiSend(protocol, "group", botId, groupId, msg)
+      if (!isBotOnline(botId) && canRescueOfflineActiveMessage()) {
+        return routeOfflineBotApiSend(protocol, "group", botId, groupId, msg)
+      }
+
+      const originalSendMsg = sendMsg => withNoRoute(() => originalSendGroupMsg.call(this, botId, groupId, sendMsg))
+      return routeBotApiSend(protocol, "group", botId, groupId, msg, originalSendMsg)
     }
   }
 
