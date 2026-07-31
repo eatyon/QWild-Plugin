@@ -1,20 +1,14 @@
 import { AsyncLocalStorage } from "node:async_hooks"
 
-let currentEvent = null
+const eventStore = new AsyncLocalStorage()
 const noRouteStore = new AsyncLocalStorage()
 
 export function getCurrentEvent() {
-  return currentEvent
+  return eventStore.getStore()?.event || null
 }
 
 export async function withCurrentEvent(e, fn) {
-  const prev = currentEvent
-  currentEvent = e || null
-  try {
-    return await fn()
-  } finally {
-    currentEvent = prev
-  }
+  return eventStore.run({ event: e || null }, fn)
 }
 
 export function isNoRoute() {
