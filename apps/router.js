@@ -109,7 +109,7 @@ async function patchLoader() {
       if (shouldBlockPeerBotMessage(e, protocol)) {
         Bot.makeLog(
           "debug",
-          `[QWild] 已阻断对方机器人消息：${e.raw_message || e.msg || ""}`,
+          `[QWild] 已阻断对方Bot消息：${e.raw_message || e.msg || ""}`,
           e.self_id,
         )
         return

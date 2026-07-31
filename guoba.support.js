@@ -365,7 +365,7 @@ export function supportGuoba() {
           field: "block_peer_bot_messages",
           label: "阻断对方Bot消息",
           component: "Switch",
-          bottomHelpMessage: "开启后，在群聊中阻断另一协议机器人发送的消息，避免双协议互相触发",
+          bottomHelpMessage: "开启后，在群聊中阻断另一协议机器人发送的消息",
         },
         {
           field: "block_unselected_protocols",

@@ -184,7 +184,7 @@ enable: ${config.enable}
 # 阻断未接管协议：只影响群聊，非 QQBot/Wild 协议不受影响。
 block_unselected_protocols: ${config.block_unselected_protocols}
 
-# 阻断对方Bot消息：仅群聊生效，阻断另一协议机器人发送的消息，避免双协议互相触发。
+# 阻断对方Bot消息：仅群聊生效，阻断另一协议机器人发送的消息。
 block_peer_bot_messages: ${config.block_peer_bot_messages}
 
 # 协议识别与机器人选择。
