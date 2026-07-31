@@ -65,17 +65,6 @@ function mapAtMsg(msg, protocol, botId = "") {
   return next
 }
 
-function hasAt(msg, id) {
-  for (const item of Array.isArray(msg) ? msg : [msg]) {
-    if (!item || typeof item !== "object") continue
-    if (item.type === "at") {
-      const at = item.qq || item.user_id || item.data?.qq || item.data?.user_id
-      if (String(at || "") === String(id)) return true
-    }
-  }
-  return false
-}
-
 function prepareMsg(msg, protocol, botId, options = {}) {
   let next = stripReply(mapAtMsg(msg, protocol, botId))
   const e = options.event
@@ -85,9 +74,9 @@ function prepareMsg(msg, protocol, botId, options = {}) {
 
   const sourceAt = options.at === true
     ? e?.user_id
-    : options.at || (options.quote ? e?.user_id : "")
+    : options.at
   const at = mappedAtId(sourceAt, protocol, botId)
-  if (!at || hasAt(next, at)) return next
+  if (!at) return next
   return Array.isArray(next)
     ? [{ type: "at", qq: at }, "\n", ...next]
     : [{ type: "at", qq: at }, "\n", next]

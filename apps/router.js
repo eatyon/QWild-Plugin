@@ -56,8 +56,8 @@ function patchReply(e) {
 
     try {
       const ret = target === "wild"
-        ? await sendWild(e, msg, { quote, at: data?.at })
-        : await sendQQBot(e, msg, { quote, at: data?.at })
+        ? await sendWild(e, msg, { at: data?.at })
+        : await sendQQBot(e, msg, { at: data?.at })
       if (isSendSuccess(ret)) {
         scheduleRecall(ret, data?.recallMsg)
         return ret
