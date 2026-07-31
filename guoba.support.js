@@ -362,6 +362,12 @@ export function supportGuoba() {
           bottomHelpMessage: "插件总开关，关闭后不接管接收和发送",
         },
         {
+          field: "block_peer_bot_messages",
+          label: "阻断对方Bot消息",
+          component: "Switch",
+          bottomHelpMessage: "开启后，在群聊中阻断另一协议机器人发送的消息，避免双协议互相触发",
+        },
+        {
           field: "block_unselected_protocols",
           label: "阻断未接管协议",
           component: "Switch",

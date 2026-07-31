@@ -90,6 +90,7 @@ function normalizeMap(value) {
 export function normalizeConfig(config, defaultConfig) {
   config.enable = normalizeBoolean(config.enable, true)
   config.block_unselected_protocols = normalizeBoolean(config.block_unselected_protocols, false)
+  config.block_peer_bot_messages = normalizeBoolean(config.block_peer_bot_messages, true)
   config.protocols.qqbot.adapter = String(config.protocols.qqbot.adapter || "QQBot").trim()
   config.protocols.wild.adapter = String(config.protocols.wild.adapter || "").trim()
   config.protocols.qqbot.self_id = String(config.protocols.qqbot.self_id || "").trim()

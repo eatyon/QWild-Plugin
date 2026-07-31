@@ -1,7 +1,7 @@
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { config } from "../model/config.js"
-import { candidateProtocol, eventProtocol, shouldBypassReceive, shouldBypassSend } from "./protocol.js"
+import { candidateProtocol, eventProtocol, findBot, shouldBypassReceive, shouldBypassSend } from "./protocol.js"
 import { shouldBlockReceive } from "./receive.js"
 import { isMissingIdentityMapError, sendWild, sendQQBot } from "./sender.js"
 import { isSendSuccess, targetProtocol } from "./message.js"
@@ -19,6 +19,21 @@ function isGroupMessage(e) {
 function shouldBlockUnselectedProtocol(e, protocol) {
   if (!config.block_unselected_protocols || !isGroupMessage(e)) return false
   return Boolean(candidateProtocol(e?.bot) && !protocol)
+}
+
+function botSelfId(protocol) {
+  const selected = String(config.protocols?.[protocol]?.self_id || "")
+  if (selected) return selected
+  const bot = findBot(protocol)
+  return String(bot?.uin || bot?.self_id || "")
+}
+
+function shouldBlockPeerBotMessage(e, protocol) {
+  if (!config.block_peer_bot_messages || !isGroupMessage(e)) return false
+  if (!["qqbot", "wild"].includes(protocol)) return false
+  const peerProtocol = protocol === "qqbot" ? "wild" : "qqbot"
+  const peerId = botSelfId(peerProtocol)
+  return Boolean(peerId && String(e?.user_id || "") === peerId)
 }
 
 function patchReply(e) {
@@ -87,6 +102,14 @@ async function patchLoader() {
         Bot.makeLog(
           "debug",
           `[QWild] 已阻断未接管协议消息：${e.raw_message || e.msg || ""}`,
+          e.self_id,
+        )
+        return
+      }
+      if (shouldBlockPeerBotMessage(e, protocol)) {
+        Bot.makeLog(
+          "debug",
+          `[QWild] 已阻断对方机器人消息：${e.raw_message || e.msg || ""}`,
           e.self_id,
         )
         return
