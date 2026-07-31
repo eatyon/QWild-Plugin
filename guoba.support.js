@@ -371,7 +371,7 @@ export function supportGuoba() {
           field: "block_unselected_protocols",
           label: "阻断未接管协议",
           component: "Switch",
-          bottomHelpMessage: "只阻断未被 QQBot/Wild 机器人选择接管的群消息",
+          bottomHelpMessage: "阻断未被接管的机器人群消息",
         },
         {
           field: "runtime.offline_mode",
@@ -402,6 +402,13 @@ export function supportGuoba() {
           componentProps: {
             options: botOptions("wild"),
           },
+        },
+        {
+          field: "single_protocol_at_messages",
+          label: "消息单端处理",
+          component: "Switch",
+          helpMessage: "QQBot 端需机器人映射；双端收到同一条艾特 Wild 的消息时会自动补充映射",
+          bottomHelpMessage: "艾特指定机器人时，阻断另一协议的同一消息。",
         },
         {
           field: "response_prefixes.qqbot",

@@ -35,6 +35,7 @@ export const defaultConfig = {
   enable: true,
   block_unselected_protocols: false,
   block_peer_bot_messages: true,
+  single_protocol_at_messages: true,
   protocols: {
     qqbot: {
       adapter: "QQBot",
@@ -186,6 +187,9 @@ block_unselected_protocols: ${config.block_unselected_protocols}
 
 # 阻断对方Bot消息：仅群聊生效，阻断另一协议机器人发送的消息。
 block_peer_bot_messages: ${config.block_peer_bot_messages}
+
+# 消息单端处理：仅群聊生效，艾特指定机器人时，阻断另一协议的同一消息。
+single_protocol_at_messages: ${config.single_protocol_at_messages}
 
 # 协议识别与机器人选择。
 # QQBot adapter 默认为 QQBot；Wild adapter 留空时自动选择在线的野生协议端。
