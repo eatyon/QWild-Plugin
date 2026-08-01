@@ -93,7 +93,6 @@ export const defaultConfig = {
     link: "",
     command_rules: [],
   },
-  identity: {},
   groups: {},
   users: {},
 }
@@ -108,6 +107,8 @@ function defaultCommandAllowRules() {
         "^#[Qq][Ww](?:查看|查询)[Ii][Dd]",
         "^#[Qq][Ww]绑定群聊",
         "^#[Qq][Ww]取消绑定群聊",
+        "^#[Qq][Ww]绑定用户",
+        "^#[Qq][Ww]取消绑定用户",
       ],
     },
   ]
@@ -127,9 +128,15 @@ function mergeConfig(target, source) {
 }
 
 async function readYaml(file) {
+  return parseSimpleYaml(await fs.readFile(file, "utf8"))
+}
+
+async function readUserYaml(files) {
   try {
-    return parseSimpleYaml(await fs.readFile(file, "utf8"))
-  } catch {
+    return await readYaml(files.user)
+  } catch (err) {
+    if (err?.code !== "ENOENT") throw err
+    await fs.copyFile(files.default, files.user)
     return {}
   }
 }
@@ -147,11 +154,6 @@ function mergeModule(name, value) {
       mergeConfig(config.send, value.send && typeof value.send === "object" ? value.send : value)
       break
     case "identity": {
-      const identity =
-        value.identity && typeof value.identity === "object"
-          ? value.identity
-          : Object.fromEntries(Object.entries(value).filter(([key]) => !["groups", "users"].includes(key)))
-      mergeConfig(config.identity, identity)
       if (value.groups) config.groups = value.groups
       if (value.users) config.users = value.users
       break
@@ -165,9 +167,7 @@ export async function loadConfig() {
 
   for (const [name, files] of Object.entries(configFiles)) {
     mergeModule(name, await readYaml(files.default))
-    const userConfig = await readYaml(files.user)
-    if (Object.keys(userConfig).length) mergeModule(name, userConfig)
-    else await fs.copyFile(files.default, files.user)
+    mergeModule(name, await readUserYaml(files))
   }
 
   validateConfig(config)

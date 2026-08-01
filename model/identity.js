@@ -1,21 +1,35 @@
+const qqbotSeparators = [":", "\uF03A"]
+
+function qqbotSeparatorIndex(id) {
+  const indexes = qqbotSeparators.map(separator => id.indexOf(separator)).filter(index => index >= 0)
+  return indexes.length ? Math.min(...indexes) : -1
+}
+
+export function normalizeQQBotId(id) {
+  const text = String(id || "")
+  const index = qqbotSeparatorIndex(text)
+  return index >= 0 ? `${text.slice(0, index)}:${text.slice(index + 1)}` : text
+}
+
 export function qqbotId(botId, id) {
-  id = String(id || "")
-  if (!id || id.includes(":")) return id
+  botId = normalizeQQBotId(botId)
+  id = normalizeQQBotId(id)
+  if (!id || isQQBotId(id) || !botId) return id
   return `${botId}:${id}`
 }
 
 export function qqbotBotId(id) {
-  return String(id || "").split(":")[0] || ""
+  return normalizeQQBotId(id).split(":")[0] || ""
 }
 
 export function qqbotInnerId(id) {
-  const text = String(id || "")
+  const text = normalizeQQBotId(id)
   const index = text.indexOf(":")
   return index >= 0 ? text.slice(index + 1) : ""
 }
 
 export function isQQBotId(id) {
-  return /^[^:\s]+:.+$/.test(String(id || ""))
+  return /^[^:\s]+:.+$/.test(normalizeQQBotId(id))
 }
 
 export function isQQId(id) {
@@ -23,7 +37,7 @@ export function isQQId(id) {
 }
 
 export function mappedValue(map, key) {
-  key = String(key || "")
+  key = normalizeQQBotId(key)
   return map?.[key] || ""
 }
 
@@ -34,8 +48,8 @@ export function findAllByValue(map, value) {
 
 export function reverseMappedValue(map, value, botId = "") {
   botId = String(botId || "")
-  const hit = findAllByValue(map, value).find(([from]) => !botId || String(from).startsWith(`${botId}:`))
-  return hit?.[0] || ""
+  const hits = findAllByValue(map, value).filter(([from]) => !botId || String(from).startsWith(`${botId}:`))
+  return hits.length === 1 ? hits[0][0] : ""
 }
 
 export function hasMappedValue(map, value) {
@@ -50,14 +64,14 @@ export function parseMappingPair(text) {
     .filter(Boolean)
   if (parts.length !== 2) return null
 
-  const [left, right] = parts
+  const [left, right] = parts.map(normalizeQQBotId)
   if (isQQBotId(left) && isQQId(right)) return { qqbot: left, wild: right }
   if (isQQBotId(right) && isQQId(left)) return { qqbot: right, wild: left }
   return null
 }
 
 export function findMapping(map, id) {
-  id = String(id || "").trim()
+  id = normalizeQQBotId(String(id || "").trim())
   if (!id) return null
   if (id.includes("=")) {
     const pair = parseMappingPair(id)

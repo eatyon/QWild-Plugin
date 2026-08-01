@@ -1,3 +1,5 @@
+import { normalizeQQBotId } from "./identity.js"
+
 function normalizeBoolean(value, fallback = false) {
   if (typeof value === "boolean") return value
   if (typeof value === "string") {
@@ -30,6 +32,10 @@ export function normalizeList(value) {
     .split(/\r?\n|,/)
     .map(item => item.trim())
     .filter(Boolean)
+}
+
+function normalizeQQBotList(value) {
+  return normalizeList(value).map(normalizeQQBotId)
 }
 
 function normalizeCommandList(value) {
@@ -68,18 +74,19 @@ function normalizeReceive(config, defaultConfig, protocol) {
   }
   config.receive[protocol].block = normalizeBoolean(config.receive[protocol].block, defaults.block)
   config.receive[protocol].command_allow_rules = normalizeCommandList(config.receive[protocol].command_allow_rules)
-  config.receive[protocol].user_allow_list = normalizeList(config.receive[protocol].user_allow_list)
+  const normalizeIdList = protocol === "qqbot" ? normalizeQQBotList : normalizeList
+  config.receive[protocol].user_allow_list = normalizeIdList(config.receive[protocol].user_allow_list)
   config.receive[protocol].group_mode = normalizeMode(config.receive[protocol].group_mode)
-  config.receive[protocol].group_list = normalizeList(config.receive[protocol].group_list)
+  config.receive[protocol].group_list = normalizeIdList(config.receive[protocol].group_list)
   config.receive[protocol].user_mode = normalizeMode(config.receive[protocol].user_mode)
-  config.receive[protocol].user_list = normalizeList(config.receive[protocol].user_list)
+  config.receive[protocol].user_list = normalizeIdList(config.receive[protocol].user_list)
 }
 
 function normalizeMap(value) {
   const map = {}
   if (value && typeof value === "object" && !Array.isArray(value)) {
     for (const [from, to] of Object.entries(value)) {
-      const key = String(from || "").trim()
+      const key = normalizeQQBotId(String(from || "").trim())
       const val = String(to || "").trim()
       if (key && val) map[key] = val
     }
@@ -121,7 +128,6 @@ export function normalizeConfig(config, defaultConfig) {
   config.send.node = normalizeOptionalProtocol(config.send.node)
   config.send.forward = normalizeOptionalProtocol(config.send.forward)
   config.send.command_rules = normalizeSendCommandRules(config.send.command_rules)
-  config.identity ||= {}
   config.groups = normalizeMap(config.groups)
   config.users = normalizeMap(config.users)
 }

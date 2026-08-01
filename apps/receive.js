@@ -1,8 +1,15 @@
 import { config } from "../model/config.js"
+import { qqbotId } from "../model/identity.js"
 
 function listIncludes(list, id) {
   id = String(id || "")
   return (list || []).some(item => String(item) === id)
+}
+
+function eventId(e, protocol, type) {
+  const id = type === "group" ? e?.group_id : e?.user_id
+  if (protocol !== "qqbot") return String(id || "")
+  return qqbotId(e?.self_id || e?.bot?.uin || e?.bot?.self_id, id)
 }
 
 function currentBotIds(e) {
@@ -159,12 +166,14 @@ export function shouldBlockReceive(e, protocol) {
 
   let blocked = false
 
-  if (!listIncludes(rule.user_allow_list, e.user_id)) {
-    const userHit = listIncludes(rule.user_list, e.user_id)
+  const userId = eventId(e, protocol, "user")
+  const groupId = eventId(e, protocol, "group")
+  if (!listIncludes(rule.user_allow_list, userId)) {
+    const userHit = listIncludes(rule.user_list, userId)
     blocked = rule.user_mode === "white" ? !userHit : userHit
 
     if (e?.isGroup || e?.message_type === "group") {
-      const groupHit = listIncludes(rule.group_list, e.group_id)
+      const groupHit = listIncludes(rule.group_list, groupId)
       const groupBlocked = rule.group_mode === "white" ? !groupHit : groupHit
       blocked = blocked || groupBlocked
     }

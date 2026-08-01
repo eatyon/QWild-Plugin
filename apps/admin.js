@@ -8,11 +8,11 @@ const require = createRequire(import.meta.url)
 const pkg = require("../package.json")
 
 const pendingBinds = {
-  group: {},
-  user: {},
+  group: null,
+  user: null,
 }
+const pendingBindTTL = 30 * 1000
 
-const showIdMarks = new Map()
 const pluginVersion = pkg.version ? `<span class="version">${pkg.version}</span>` : ""
 
 function onOff(value) {
@@ -42,6 +42,7 @@ function statusType(value) {
 function countMap(map) {
   return Object.keys(map || {}).length
 }
+
 function eventProtocolName(e, protocol = eventProtocol(e)) {
   if (protocol === "qqbot") return "QQBot"
   if (protocol === "wild") return adapterName(e?.bot) || "Wild"
@@ -52,10 +53,6 @@ function routeName(protocol) {
   if (protocol === "qqbot") return "QQBot"
   if (protocol === "wild") return "Wild"
   return "原协议"
-}
-
-function routeType(protocol) {
-  return "route"
 }
 
 function isGroup(e) {
@@ -71,15 +68,53 @@ function currentId(e, type, protocol = eventProtocol(e)) {
   return protocol === "qqbot" ? qqbotId(e?.self_id || e?.bot?.uin || e?.bot?.self_id, id) : String(id || "")
 }
 
+function messageAtId(item) {
+  return String(item?.qq || item?.user_id || item?.data?.qq || item?.data?.user_id || "")
+}
+
 function atIds(e, protocol = eventProtocol(e)) {
   const ids = []
   for (const item of e?.message || []) {
     if (item?.type !== "at") continue
-    const id = item.qq || item.user_id || item.data?.qq || item.data?.user_id
-    if (!id || String(id) === "all") continue
+    const id = messageAtId(item)
+    if (!id || id === "all") continue
     ids.push(protocol === "qqbot" ? qqbotId(e?.self_id || e?.bot?.uin || e?.bot?.self_id, id) : String(id))
   }
   return [...new Set(ids)]
+}
+
+function botAccountIds(e) {
+  const ids = [e?.self_id, e?.bot?.uin, e?.bot?.self_id]
+  for (const protocol of ["qqbot", "wild"]) {
+    const bot = findBot(protocol)
+    ids.push(config.protocols?.[protocol]?.self_id, bot?.uin, bot?.self_id)
+  }
+  return new Set(ids.map(id => String(id || "")).filter(Boolean))
+}
+
+function userAtIds(e, protocol = eventProtocol(e)) {
+  const botIds = botAccountIds(e)
+  const ids = []
+  for (const item of e?.message || []) {
+    if (item?.type !== "at") continue
+    const id = messageAtId(item)
+    if (!id || id === "all") continue
+    if (item?.bot === true || item?.is_you === true || item?.data?.bot === true || item?.data?.is_you === true) continue
+    if (botIds.has(id)) continue
+    const userId = protocol === "qqbot" ? qqbotId(e?.self_id || e?.bot?.uin || e?.bot?.self_id, id) : id
+    if (botIds.has(String(config.users?.[userId] || ""))) continue
+    ids.push(userId)
+  }
+  return [...new Set(ids)]
+}
+
+function messageText(e) {
+  const texts = []
+  for (const item of e?.message || []) {
+    if (typeof item === "string") texts.push(item)
+    else if (item?.type === "text") texts.push(item.text ?? item.data?.text ?? "")
+  }
+  return texts.join("").trim() || String(e?.msg || "").trim()
 }
 
 function otherProtocol(protocol) {
@@ -116,13 +151,6 @@ function hasCurrentQQBotValue(map, value) {
   return findAllByValue(map, value).some(([from]) => String(from).startsWith(`${botId}:`))
 }
 
-function hasCurrentMapping(e, protocol) {
-  if (protocol !== "wild") return false
-  if (isGroup(e)) return hasCurrentQQBotValue(config.groups, currentId(e, "group", protocol))
-  if (isPrivate(e)) return hasCurrentQQBotValue(config.users, currentId(e, "user", protocol))
-  return false
-}
-
 function currentRouteState(e, protocol) {
   if (!config.send.enable) return { value: "未启用", type: "off" }
   const type = isGroup(e) ? "group" : isPrivate(e) ? "user" : ""
@@ -132,34 +160,6 @@ function currentRouteState(e, protocol) {
   const id = currentId(e, type, protocol)
   const ok = protocol === "qqbot" ? Boolean(map[id]) : hasCurrentQQBotValue(map, id)
   return { value: ok ? "是" : "否", type: ok ? "ok" : "off" }
-}
-
-function showIdKey(e, protocol) {
-  if (isGroup(e)) {
-    const wildGroupId = protocol === "wild"
-      ? currentId(e, "group", protocol)
-      : config.groups[currentId(e, "group", protocol)] || currentId(e, "group", protocol)
-    return `group:${wildGroupId}`
-  }
-  const wildUserId = protocol === "wild"
-    ? currentId(e, "user", protocol)
-    : config.users[currentId(e, "user", protocol)] || currentId(e, "user", protocol)
-  return `private:${wildUserId}`
-}
-
-function markShowId(e, protocol) {
-  const key = showIdKey(e, protocol)
-  showIdMarks.set(key, Date.now())
-  setTimeout(() => showIdMarks.delete(key), 3000)
-}
-
-function hasRecentShowId(e, protocol) {
-  const time = showIdMarks.get(showIdKey(e, protocol))
-  return Boolean(time && Date.now() - time < 3000)
-}
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 function addMapping(type, pair) {
@@ -309,18 +309,18 @@ export class qwildAdmin extends plugin {
       {
         group: "发送分流概览",
         list: [
-          { title: "文本消息", value: routeName(config.send.text), type: routeType(config.send.text) },
-          { title: "图片消息", value: routeName(config.send.image), type: routeType(config.send.image) },
-          { title: "图文消息", value: routeName(config.send.image_text), type: routeType(config.send.image_text) },
-          { title: "语音消息", value: routeName(config.send.record), type: routeType(config.send.record) },
-          { title: "视频消息", value: routeName(config.send.video), type: routeType(config.send.video) },
-          { title: "文件消息", value: routeName(config.send.file), type: routeType(config.send.file) },
-          { title: "按钮消息", value: routeName(config.send.button), type: routeType(config.send.button) },
-          { title: "Markdown 消息", value: routeName(config.send.markdown), type: routeType(config.send.markdown) },
-          { title: "合并转发消息", value: routeName(config.send.node), type: routeType(config.send.node) },
-          { title: "Forward 消息", value: routeName(config.send.forward), type: routeType(config.send.forward) },
-          { title: "链接消息", value: routeName(config.send.link), type: routeType(config.send.link) },
-          { title: "未知类型", value: routeName(config.send.default), type: routeType(config.send.default) },
+          { title: "文本消息", value: routeName(config.send.text), type: "route" },
+          { title: "图片消息", value: routeName(config.send.image), type: "route" },
+          { title: "图文消息", value: routeName(config.send.image_text), type: "route" },
+          { title: "语音消息", value: routeName(config.send.record), type: "route" },
+          { title: "视频消息", value: routeName(config.send.video), type: "route" },
+          { title: "文件消息", value: routeName(config.send.file), type: "route" },
+          { title: "按钮消息", value: routeName(config.send.button), type: "route" },
+          { title: "Markdown 消息", value: routeName(config.send.markdown), type: "route" },
+          { title: "合并转发消息", value: routeName(config.send.node), type: "route" },
+          { title: "Forward 消息", value: routeName(config.send.forward), type: "route" },
+          { title: "链接消息", value: routeName(config.send.link), type: "route" },
+          { title: "未知类型", value: routeName(config.send.default), type: "route" },
         ],
       },
       {
@@ -364,30 +364,6 @@ export class qwildAdmin extends plugin {
     )
   }
 
-  async showId() {
-    const protocol = eventProtocol(this.e)
-    let replyCurrent = false
-    if (protocol === "qqbot") {
-      markShowId(this.e, protocol)
-    } else if (protocol === "wild" && findBot("qqbot") && hasCurrentMapping(this.e, protocol)) {
-      await sleep(2000)
-      if (hasRecentShowId(this.e, protocol)) return true
-      replyCurrent = true
-    } else if (protocol === "wild") {
-      replyCurrent = true
-    }
-
-    const lines = [`当前协议：${eventProtocolName(this.e, protocol)}`]
-
-    if (isGroup(this.e)) lines.push(`群聊ID：${currentId(this.e, "group", protocol)}`)
-    if (this.e?.user_id) lines.push(`用户ID：${currentId(this.e, "user", protocol)}`)
-    const at = atIds(this.e, protocol)
-    if (at.length === 1) lines.push(`艾特对象ID：${at[0]}`)
-    else if (at.length > 1) lines.push(["艾特对象ID：", ...at].join("\n"))
-
-    return replyCurrent ? this.replyCurrent(lines.join("\n")) : this.reply(lines.join("\n"), true)
-  }
-
   async searchMap() {
     const keyword = actionArg(this.e.msg, /^#[Qq][Ww]搜索映射/)
     if (!keyword) return this.reply("请填写搜索内容\n示例：#QW搜索映射 123456789", true)
@@ -405,6 +381,19 @@ export class qwildAdmin extends plugin {
 
     const msg = await common.makeForwardMsg(this.e, nodes, `QWild 映射搜索：${keyword}`)
     return this.reply(msg)
+  }
+
+  showId() {
+    const protocol = eventProtocol(this.e)
+    const lines = [`当前协议：${eventProtocolName(this.e, protocol)}`]
+
+    if (isGroup(this.e)) lines.push(`群聊ID：${currentId(this.e, "group", protocol)}`)
+    if (this.e?.user_id) lines.push(`用户ID：${currentId(this.e, "user", protocol)}`)
+    const at = atIds(this.e, protocol)
+    if (at.length === 1) lines.push(`艾特对象ID：${at[0]}`)
+    else if (at.length > 1) lines.push(["艾特对象ID：", ...at].join("\n"))
+
+    return this.replyCurrent(lines.join("\n"))
   }
 
   async setSend() {
@@ -427,38 +416,48 @@ export class qwildAdmin extends plugin {
     return this.saveAndReply(`QWild Wild 接收阻断已${onOff(config.receive.wild.block)}`)
   }
 
-  async bind(type) {
+  async bind(type, id = "", mode = type) {
     const protocol = eventProtocol(this.e)
     if (!protocol) return this.replyCurrent("未识别当前协议")
     if (type === "group" && !isGroup(this.e)) return this.replyCurrent("请在群聊中使用")
-    if (type === "user" && !isPrivate(this.e)) return this.replyCurrent("请在私聊中使用")
 
-    pendingBinds[type][protocol] = currentId(this.e, type, protocol)
-    pendingBinds[type].time = Date.now()
+    id ||= currentId(this.e, type, protocol)
+    if (!id) return this.replyCurrent(`未识别当前${mapLabel(type)}ID`)
 
-    if (pendingBinds[type].qqbot && pendingBinds[type].wild) {
-      const pair = {
-        qqbot: pendingBinds[type].qqbot,
-        wild: pendingBinds[type].wild,
-      }
-      pendingBinds[type] = {}
-      if (!addMapping(type, pair)) {
-        return this.replyCurrent(`${mapLabel(type)}映射已存在，请先删除后再绑定`)
-      }
-      await configSave()
-      return this.replyCurrent(`${mapLabel(type)}映射已添加：\n${mapText(pair)}`)
+    const now = Date.now()
+    const pending = pendingBinds[type]
+    if (!pending || now - pending.time > pendingBindTTL || pending.protocol === protocol || pending.mode !== mode) {
+      pendingBinds[type] = { protocol, id, mode, time: now }
+      return this.replyCurrent(`已记录${mapLabel(type)}，等待 ${otherProtocol(protocol)} 上报`)
     }
 
-    return this.replyCurrent(`已记录当前${mapLabel(type)}，等待 ${otherProtocol(protocol)} 上报`)
+    const pair = protocol === "qqbot"
+      ? { qqbot: id, wild: pending.id }
+      : { qqbot: pending.id, wild: id }
+    pendingBinds[type] = null
+    if (!addMapping(type, pair)) {
+      return this.replyCurrent(`${mapLabel(type)}映射已存在，请先删除后再绑定`)
+    }
+    await configSave()
+    return this.replyCurrent(`${mapLabel(type)}映射已添加：\n${mapText(pair)}`)
   }
 
   bindGroup() {
-    return this.bind("group")
+    return this.bind("group", "", "group")
   }
 
   async bindUser() {
+    if (isGroup(this.e)) {
+      const arg = actionArg(messageText(this.e), /^#[Qq][Ww]绑定用户/)
+      if (arg) return this.replyCurrent("群聊中请直接使用 #QW绑定用户，或艾特一名用户")
+
+      const targets = userAtIds(this.e)
+      if (targets.length > 1) return this.replyCurrent("一次只能绑定一名艾特用户")
+      return this.bind("user", targets[0] || currentId(this.e, "user"), targets.length ? "group-at" : "group-current")
+    }
+
     const arg = actionArg(this.e.msg, /^#[Qq][Ww]绑定用户/)
-    if (!arg) return this.bind("user")
+    if (!arg) return this.bind("user", "", "private-current")
 
     const pair = this.parseCurrentUserArg(arg, "#QW绑定用户")
     if (!pair || pair.error) return this.replyCurrent(pair?.error || "格式错误\n示例：#QW绑定用户 另一端用户ID")
@@ -468,7 +467,7 @@ export class qwildAdmin extends plugin {
   }
 
   cancelBind(type) {
-    pendingBinds[type] = {}
+    pendingBinds[type] = null
     return this.replyCurrent(`已取消${mapLabel(type)}绑定记录`)
   }
 
@@ -489,11 +488,6 @@ export class qwildAdmin extends plugin {
     return this.reply(`群聊映射已添加：\n${mapText(pair)}`, true)
   }
 
-  parseUserAddArg(arg) {
-    if (arg.includes("=")) return parseMappingPair(arg)
-    return null
-  }
-
   parseCurrentUserArg(arg, command) {
     const protocol = eventProtocol(this.e)
     arg = String(arg || "").trim()
@@ -511,7 +505,7 @@ export class qwildAdmin extends plugin {
 
   async addUserMap() {
     const arg = actionArg(this.e.msg, /^#[Qq][Ww]添加用户映射/)
-    const pair = this.parseUserAddArg(arg)
+    const pair = arg.includes("=") ? parseMappingPair(arg) : null
     if (!pair || pair.error) return this.reply(pair?.error || "格式错误\n示例：#QW添加用户映射 BotID:UserID=QQ号", true)
     if (!addMapping("user", pair)) return this.reply("用户映射已存在，请先删除后再绑定", true)
     await configSave()

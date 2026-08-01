@@ -12,8 +12,10 @@ import {
 import { isSendSuccess, messageTypes, otherProtocol, stripReply, targetProtocol } from "./message.js"
 import { hasMappedValue, qqbotId } from "../model/identity.js"
 
-const patchedFriendBots = new WeakSet()
-const patchedGroupBots = new WeakSet()
+const friendPickPatchFlag = Symbol.for("QWild.Plugin.DirectFriendPickPatched")
+const groupPickPatchFlag = Symbol.for("QWild.Plugin.DirectGroupPickPatched")
+const friendSendPatchFlag = Symbol.for("QWild.Plugin.DirectFriendSendPatched")
+const groupSendPatchFlag = Symbol.for("QWild.Plugin.DirectGroupSendPatched")
 const botProtocolCache = new Map()
 const botApiPatchFlag = "__QWild_Plugin_DirectBotApiPatched__"
 const activeDedupCache = new Map()
@@ -262,16 +264,17 @@ async function routeBotApiSend(protocol, type, botId, id, msg, originalSendMsg) 
 }
 
 function patchPickFriend(bot, botId, protocol) {
-  if (!bot?.pickFriend || patchedFriendBots.has(bot)) return
+  if (!bot?.pickFriend || bot[friendPickPatchFlag]) return
   cacheBotProtocol(botId, protocol)
 
   const originalPickFriend = bot.pickFriend.bind(bot)
   bot.pickFriend = userId => {
     const friend = originalPickFriend(userId)
     if (!friend?.sendMsg) return friend
+    if (friend.sendMsg[friendSendPatchFlag]) return friend
 
     const originalSendMsg = friend.sendMsg.bind(friend)
-    friend.sendMsg = async (...args) => {
+    const sendMsg = async (...args) => {
       if (args.length !== 1) return originalSendMsg(...args)
       const msg = args[0]
       const key = qqbotId(botId, userId || friend.user_id)
@@ -287,23 +290,26 @@ function patchPickFriend(bot, botId, protocol) {
       if (!decision.route) return originalSendMsg(msg)
       return routeDirectSend(protocol, "friend", key, id, msg, originalSendMsg)
     }
+    sendMsg[friendSendPatchFlag] = true
+    friend.sendMsg = sendMsg
     return friend
   }
 
-  patchedFriendBots.add(bot)
+  bot[friendPickPatchFlag] = true
 }
 
 function patchPickGroup(bot, botId, protocol) {
-  if (!bot?.pickGroup || patchedGroupBots.has(bot)) return
+  if (!bot?.pickGroup || bot[groupPickPatchFlag]) return
   cacheBotProtocol(botId, protocol)
 
   const originalPickGroup = bot.pickGroup.bind(bot)
   bot.pickGroup = groupId => {
     const group = originalPickGroup(groupId)
     if (!group?.sendMsg) return group
+    if (group.sendMsg[groupSendPatchFlag]) return group
 
     const originalSendMsg = group.sendMsg.bind(group)
-    group.sendMsg = async (...args) => {
+    const sendMsg = async (...args) => {
       if (args.length !== 1) return originalSendMsg(...args)
       const msg = args[0]
       const key = qqbotId(botId, groupId || group.group_id)
@@ -319,10 +325,12 @@ function patchPickGroup(bot, botId, protocol) {
       if (!decision.route) return originalSendMsg(msg)
       return routeDirectSend(protocol, "group", key, id, msg, originalSendMsg)
     }
+    sendMsg[groupSendPatchFlag] = true
+    group.sendMsg = sendMsg
     return group
   }
 
-  patchedGroupBots.add(bot)
+  bot[groupPickPatchFlag] = true
 }
 
 function patchBotApi() {

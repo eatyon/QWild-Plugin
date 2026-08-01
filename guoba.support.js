@@ -365,6 +365,7 @@ export function supportGuoba() {
           field: "block_peer_bot_messages",
           label: "阻断对方Bot消息",
           component: "Switch",
+          helpMessage: "QQBot 端识别 Wild Bot 需配置对应的用户映射；未配置时无法阻断 Wild Bot 消息",
           bottomHelpMessage: "开启后，在群聊中阻断另一协议机器人发送的消息",
         },
         {
@@ -407,8 +408,8 @@ export function supportGuoba() {
           field: "single_protocol_at_messages",
           label: "消息单端处理",
           component: "Switch",
-          helpMessage: "QQBot 端需机器人映射；双端收到同一条艾特 Wild 的消息时会自动补充映射",
-          bottomHelpMessage: "艾特指定机器人时，阻断另一协议的同一消息。",
+          helpMessage: "QQBot 端识别艾特 Wild 需配置机器人映射；未配置时不会阻断 QQBot",
+          bottomHelpMessage: "两端在线时，艾特指定机器人将阻断另一协议的同一消息",
         },
         {
           field: "response_prefixes.qqbot",

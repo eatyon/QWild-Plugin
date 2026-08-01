@@ -1,6 +1,6 @@
 import path from "node:path"
 import { pathToFileURL } from "node:url"
-import { config, configSave } from "../model/config.js"
+import { config } from "../model/config.js"
 import { mappedValue, qqbotId } from "../model/identity.js"
 import { candidateProtocol, eventProtocol, findBot, shouldBypassReceive, shouldBypassSend } from "./protocol.js"
 import { shouldBlockReceive } from "./receive.js"
@@ -12,9 +12,6 @@ import { messageIds, patchRecall, recallRoutedMessage } from "./recall.js"
 
 const patchFlag = Symbol.for("QWild.Plugin.RouterPatched")
 const replyFlag = Symbol.for("QWild.Plugin.ReplyPatched")
-const pendingWildAtMessages = new Map()
-const autoMappingWindow = 2000
-let mappingSaveTask = Promise.resolve()
 
 function isGroupMessage(e) {
   return Boolean(e?.isGroup || e?.message_type === "group")
@@ -37,7 +34,13 @@ function shouldBlockPeerBotMessage(e, protocol) {
   if (!["qqbot", "wild"].includes(protocol)) return false
   const peerProtocol = protocol === "qqbot" ? "wild" : "qqbot"
   const peerId = botSelfId(peerProtocol)
-  return Boolean(peerId && String(e?.user_id || "") === peerId)
+  if (!peerId) return false
+  if (protocol === "wild") return String(e?.user_id || "") === peerId
+
+  const senderId = String(e?.user_id || "")
+  if (!senderId) return false
+  const botId = String(e?.self_id || e?.bot?.uin || e?.bot?.self_id || "")
+  return mappedValue(config.users, qqbotId(botId, senderId)) === peerId
 }
 
 function atIds(e) {
@@ -47,82 +50,19 @@ function atIds(e) {
     .filter(Boolean)
 }
 
-function isAtCurrentBot(e) {
-  if (e?.atBot) return true
-  const ids = [e?.self_id, e?.bot?.uin, e?.bot?.self_id]
-    .map(id => String(id || ""))
-    .filter(Boolean)
-  return atIds(e).some(id => ids.includes(id))
-}
-
-function eventPairKey(e, protocol) {
-  const botId = String(e?.self_id || e?.bot?.uin || e?.bot?.self_id || "")
-  const groupId = protocol === "qqbot"
-    ? mappedValue(config.groups, qqbotId(botId, e?.group_id))
-    : String(e?.group_id || "")
-  const text = String(e?.raw_message || e?.msg || "").replace(/\s+/g, " ").trim()
-  if (!groupId || !text) return ""
-  return `${groupId}\n${text}`
-}
-
-function saveAutoMapping() {
-  mappingSaveTask = mappingSaveTask
-    .catch(() => {})
-    .then(() => configSave())
-    .catch(err => {
-      Bot.makeLog("error", ["[QWild] 自动保存机器人映射失败", err])
-    })
-}
-
-function rememberWildAtMessage(e) {
-  const key = eventPairKey(e, "wild")
-  if (!key || !isAtCurrentBot(e)) return
-  const previous = pendingWildAtMessages.get(key)
-  if (previous) {
-    clearTimeout(previous.timer)
-    previous.ambiguous = true
-  }
-  const pending = previous || { ambiguous: false, timer: null }
-  const timer = setTimeout(() => pendingWildAtMessages.delete(key), autoMappingWindow)
-  timer.unref?.()
-  pending.timer = timer
-  pendingWildAtMessages.set(key, pending)
-}
-
-function tryAddPeerBotMapping(e) {
-  const key = eventPairKey(e, "qqbot")
-  const pending = key && pendingWildAtMessages.get(key)
-  if (!pending || pending.ambiguous) return
-
-  const qqbotBotId = botSelfId("qqbot")
-  const wildId = botSelfId("wild")
-  const candidates = atIds(e).filter(id =>
-    id.startsWith(`${qqbotBotId}:`) && !mappedValue(config.users, id),
-  )
-  if (!qqbotBotId || candidates.length !== 1 || !wildId) return
-
-  clearTimeout(pending.timer)
-  pendingWildAtMessages.delete(key)
-  config.users[candidates[0]] = wildId
-  Bot.makeLog("info", `[QWild] 已自动添加机器人映射：${candidates[0]} -> ${wildId}`, e.self_id)
-  saveAutoMapping()
-}
-
-function observeSingleProtocolAtMessage(e, protocol) {
-  if (!config.single_protocol_at_messages || !isGroupMessage(e)) return
-  if (protocol === "wild") rememberWildAtMessage(e)
-  if (protocol === "qqbot") tryAddPeerBotMapping(e)
-}
-
 function shouldBlockSingleProtocolAtMessage(e, protocol) {
   if (!config.single_protocol_at_messages || !isGroupMessage(e)) return false
   if (!["qqbot", "wild"].includes(protocol)) return false
+  if (!findBot("qqbot") || !findBot("wild")) return false
 
   const ids = atIds(e)
   const targetProtocols = ["qqbot", "wild"].filter(item => {
     const selfId = botSelfId(item)
-    if (selfId && ids.includes(selfId)) return true
-    return protocol === "qqbot" && item === "wild" && ids.some(id => mappedValue(config.users, id) === selfId)
+    if (!selfId) return false
+    if (ids.includes(selfId)) return true
+    return protocol === "qqbot" && item === "wild" && ids.some(id =>
+      mappedValue(config.users, qqbotId(botSelfId("qqbot"), id)) === selfId,
+    )
   })
   return targetProtocols.length === 1 && targetProtocols[0] !== protocol
 }
@@ -213,7 +153,6 @@ async function patchLoader() {
         )
         return
       }
-      observeSingleProtocolAtMessage(e, protocol)
       if (shouldBlockSingleProtocolAtMessage(e, protocol)) {
         Bot.makeLog(
           "debug",
