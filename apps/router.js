@@ -50,10 +50,21 @@ function atIds(e) {
     .filter(Boolean)
 }
 
+function isBindingCommand(e) {
+  const texts = []
+  for (const item of e?.message || []) {
+    if (typeof item === "string") texts.push(item)
+    else if (item?.type === "text") texts.push(item.text ?? item.data?.text ?? "")
+  }
+  const text = texts.join("").trim() || String(e?.msg || e?.raw_message || "").trim()
+  return /^#[Qq][Ww](?:绑定|取消绑定)(?:群聊|用户)(?:\s|$)/.test(text)
+}
+
 function shouldBlockSingleProtocolAtMessage(e, protocol) {
   if (!config.single_protocol_at_messages || !isGroupMessage(e)) return false
   if (!["qqbot", "wild"].includes(protocol)) return false
   if (!findBot("qqbot") || !findBot("wild")) return false
+  if (isBindingCommand(e)) return false
 
   const ids = atIds(e)
   const targetProtocols = ["qqbot", "wild"].filter(item => {

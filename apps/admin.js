@@ -63,6 +63,10 @@ function isPrivate(e) {
   return Boolean(e?.isPrivate || e?.message_type === "private")
 }
 
+function isQQBotAtMessage(e) {
+  return String(e?.raw?.event_id || "").split(":")[0] === "GROUP_AT_MESSAGE_CREATE"
+}
+
 function currentId(e, type, protocol = eventProtocol(e)) {
   const id = type === "group" ? e?.group_id : e?.user_id
   return protocol === "qqbot" ? qqbotId(e?.self_id || e?.bot?.uin || e?.bot?.self_id, id) : String(id || "")
@@ -83,29 +87,13 @@ function atIds(e, protocol = eventProtocol(e)) {
   return [...new Set(ids)]
 }
 
-function botAccountIds(e) {
-  const ids = [e?.self_id, e?.bot?.uin, e?.bot?.self_id]
-  for (const protocol of ["qqbot", "wild"]) {
-    const bot = findBot(protocol)
-    ids.push(config.protocols?.[protocol]?.self_id, bot?.uin, bot?.self_id)
-  }
-  return new Set(ids.map(id => String(id || "")).filter(Boolean))
-}
-
-function userAtIds(e, protocol = eventProtocol(e)) {
-  const botIds = botAccountIds(e)
-  const ids = []
-  for (const item of e?.message || []) {
-    if (item?.type !== "at") continue
-    const id = messageAtId(item)
-    if (!id || id === "all") continue
-    if (item?.bot === true || item?.is_you === true || item?.data?.bot === true || item?.data?.is_you === true) continue
-    if (botIds.has(id)) continue
-    const userId = protocol === "qqbot" ? qqbotId(e?.self_id || e?.bot?.uin || e?.bot?.self_id, id) : id
-    if (botIds.has(String(config.users?.[userId] || ""))) continue
-    ids.push(userId)
-  }
-  return [...new Set(ids)]
+function isOnlyQQBotAt(ids) {
+  const bot = findBot("qqbot")
+  const botIds = [config.protocols?.qqbot?.self_id, bot?.uin, bot?.self_id]
+    .map(id => String(id || ""))
+    .filter(Boolean)
+  const qqbotIds = new Set(botIds.flatMap(id => [id, qqbotId(id, id)]))
+  return ids.length > 0 && ids.every(id => qqbotIds.has(id))
 }
 
 function messageText(e) {
@@ -392,6 +380,9 @@ export class qwildAdmin extends plugin {
     const at = atIds(this.e, protocol)
     if (at.length === 1) lines.push(`艾特对象ID：${at[0]}`)
     else if (at.length > 1) lines.push(["艾特对象ID：", ...at].join("\n"))
+    if (protocol === "qqbot" && isGroup(this.e) && isQQBotAtMessage(this.e)) {
+      lines.push("查看艾特对象ID需开启 QQBot 获取群内全部消息")
+    }
 
     return this.replyCurrent(lines.join("\n"))
   }
@@ -450,10 +441,15 @@ export class qwildAdmin extends plugin {
     if (isGroup(this.e)) {
       const arg = actionArg(messageText(this.e), /^#[Qq][Ww]绑定用户/)
       if (arg) return this.replyCurrent("群聊中请直接使用 #QW绑定用户，或艾特一名用户")
+      if (eventProtocol(this.e) === "qqbot" && isQQBotAtMessage(this.e)) {
+        pendingBinds.user = null
+        return this.replyCurrent("绑定艾特用户需开启 QQBot 获取群内全部消息")
+      }
 
-      const targets = userAtIds(this.e)
-      if (targets.length > 1) return this.replyCurrent("一次只能绑定一名艾特用户")
-      return this.bind("user", targets[0] || currentId(this.e, "user"), targets.length ? "group-at" : "group-current")
+      const at = atIds(this.e)
+      if (isOnlyQQBotAt(at)) return this.replyCurrent("QQBot 机器人无需添加用户映射")
+      if (at.length > 1) return this.replyCurrent("一次只能绑定一名艾特用户")
+      return this.bind("user", at[0] || currentId(this.e, "user"), at.length ? "group-at" : "group-current")
     }
 
     const arg = actionArg(this.e.msg, /^#[Qq][Ww]绑定用户/)

@@ -365,7 +365,7 @@ export function supportGuoba() {
           field: "block_peer_bot_messages",
           label: "阻断对方Bot消息",
           component: "Switch",
-          helpMessage: "QQBot 端识别 Wild Bot 需配置对应的用户映射；未配置时无法阻断 Wild Bot 消息",
+          helpMessage: "QQBot 端识别 Wild Bot 需配置机器人映射；未配置时无法阻断 Wild Bot 消息",
           bottomHelpMessage: "开启后，在群聊中阻断另一协议机器人发送的消息",
         },
         {
