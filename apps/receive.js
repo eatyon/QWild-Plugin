@@ -79,8 +79,9 @@ function applyResponsePrefix(e, protocol) {
 
     e.message = [...message]
     e.message[index] = setTextItem(item, nextText)
-    e.msg = stripPrefixText(e.msg, prefixes) ?? nextText.trim()
-    e.raw_message = stripPrefixText(e.raw_message, prefixes) ?? e.msg
+    const msg = stripPrefixText(e.msg, prefixes) ?? nextText.trim()
+    e.raw_message = stripPrefixText(e.raw_message, prefixes) ?? msg
+    delete e.msg
     delete e._qwildCommandText
     e._qwildPrefixAllowed = true
     return true
@@ -126,6 +127,10 @@ function commandText(e) {
   return e._qwildCommandText
 }
 
+export function isBindingCommand(e) {
+  return commandText(e).some(text => /^#[Qq][Ww](?:绑定|取消绑定)(?:群聊|用户)(?:\s|$)/.test(text))
+}
+
 function matchCommand(e, rules) {
   if (!rules?.length) return false
   const texts = commandText(e)
@@ -161,8 +166,9 @@ function matchCommandRule(rule, texts) {
 export function shouldBlockReceive(e, protocol) {
   const rule = config.receive[protocol]
   if (!rule) return false
+  const bypassResponsePrefix = isBindingCommand(e)
 
-  if (!rule.block) return !applyResponsePrefix(e, protocol)
+  if (!rule.block) return bypassResponsePrefix ? false : !applyResponsePrefix(e, protocol)
 
   let blocked = false
 
@@ -179,7 +185,7 @@ export function shouldBlockReceive(e, protocol) {
     }
   }
 
-  if (!applyResponsePrefix(e, protocol)) return true
+  if (!bypassResponsePrefix && !applyResponsePrefix(e, protocol)) return true
 
   if (!blocked) return false
   if (matchCommand(e, rule.command_allow_rules)) return false

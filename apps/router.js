@@ -3,7 +3,7 @@ import { pathToFileURL } from "node:url"
 import { config } from "../model/config.js"
 import { mappedValue, qqbotId } from "../model/identity.js"
 import { candidateProtocol, eventProtocol, findBot, shouldBypassReceive, shouldBypassSend } from "./protocol.js"
-import { shouldBlockReceive } from "./receive.js"
+import { isBindingCommand, shouldBlockReceive } from "./receive.js"
 import { isMissingIdentityMapError, sendWild, sendQQBot } from "./sender.js"
 import { isSendSuccess, targetProtocol } from "./message.js"
 import { patchDirectSend } from "./direct.js"
@@ -48,16 +48,6 @@ function atIds(e) {
     .filter(item => item?.type === "at")
     .map(item => String(item.qq || item.user_id || item.data?.qq || item.data?.user_id || ""))
     .filter(Boolean)
-}
-
-function isBindingCommand(e) {
-  const texts = []
-  for (const item of e?.message || []) {
-    if (typeof item === "string") texts.push(item)
-    else if (item?.type === "text") texts.push(item.text ?? item.data?.text ?? "")
-  }
-  const text = texts.join("").trim() || String(e?.msg || e?.raw_message || "").trim()
-  return /^#[Qq][Ww](?:绑定|取消绑定)(?:群聊|用户)(?:\s|$)/.test(text)
 }
 
 function shouldBlockSingleProtocolAtMessage(e, protocol) {
