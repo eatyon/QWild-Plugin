@@ -93,6 +93,8 @@ export const defaultConfig = {
     link: "",
     command_rules: [],
   },
+  qqbot_user_id_conversion: false,
+  block_unmapped_qqbot_users: false,
   groups: {},
   users: {},
 }
@@ -154,6 +156,12 @@ function mergeModule(name, value) {
       mergeConfig(config.send, value.send && typeof value.send === "object" ? value.send : value)
       break
     case "identity": {
+      if (Object.hasOwn(value, "qqbot_user_id_conversion")) {
+        config.qqbot_user_id_conversion = value.qqbot_user_id_conversion
+      }
+      if (Object.hasOwn(value, "block_unmapped_qqbot_users")) {
+        config.block_unmapped_qqbot_users = value.block_unmapped_qqbot_users
+      }
       if (value.groups) config.groups = value.groups
       if (value.users) config.users = value.users
       break
@@ -292,6 +300,13 @@ groups: ${stringifyGroups(config.groups)}
 # 用户映射：完整 QQBot用户ID 与 QQ号 的对应关系。
 # QQBot用户ID必须是 BotID:UserID。
 users: ${stringifyGroups(config.users)}
+
+# QQBot用户ID转换：开启后，QQBot 收到消息时，已映射用户将以对应 QQ 号交给云崽插件处理。
+# QWild 命令不参与身份转换；转换后将继承对应 QQ 号的权限。
+qqbot_user_id_conversion: ${config.qqbot_user_id_conversion}
+
+# 阻断未映射用户：仅在开启“QQBot用户ID转换”时生效；QQBot 收到未映射用户消息时直接阻断。
+block_unmapped_qqbot_users: ${config.block_unmapped_qqbot_users}
 `
 }
 

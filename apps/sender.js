@@ -1,5 +1,5 @@
 import { config } from "../model/config.js"
-import { withNoRoute } from "./context.js"
+import { sourceEvent, withNoRoute } from "./context.js"
 import { findBot } from "./protocol.js"
 import { messageTypes, stripReply } from "./message.js"
 import { recordRoutedMessage } from "./recall.js"
@@ -29,7 +29,7 @@ function qqbotUserKey(e) {
   return qqbotId(e?.self_id || e?.bot?.uin || e?.bot?.self_id, e?.user_id)
 }
 
-function mappedAtId(id, protocol, botId = "") {
+export function mappedAtId(id, protocol, botId = "") {
   id = String(id || "")
   if (!id) return ""
   if (protocol === "wild") return mappedValue(config.users, qqbotId(botId, id)) || mappedValue(config.users, id)
@@ -48,7 +48,7 @@ function setAtId(item, id) {
   return next
 }
 
-function mapAtMsg(msg, protocol, botId = "") {
+export function mapAtMsg(msg, protocol, botId = "") {
   if (Array.isArray(msg)) return msg.map(item => mapAtMsg(item, protocol, botId))
   if (!msg || typeof msg !== "object") return msg
   if (msg.type === "node" || msg.type === "forward") return msg
@@ -137,6 +137,7 @@ async function sendWildFriend(e, msg, options) {
 }
 
 export async function sendQQBot(e, msg, options = {}) {
+  e = sourceEvent(e)
   options = { ...options, event: e }
   if (e?.isGroup || e?.message_type === "group") return sendQQBotGroupByWildId(e?.group_id, msg, options)
   if (e?.isPrivate || e?.message_type === "private") return sendQQBotFriend(e, msg, options)
@@ -144,6 +145,7 @@ export async function sendQQBot(e, msg, options = {}) {
 }
 
 export async function sendWild(e, msg, options = {}) {
+  e = sourceEvent(e)
   options = { ...options, event: e }
   if (e?.isGroup || e?.message_type === "group") return sendWildGroupByQQBotId(qqbotGroupKey(e), msg, options)
   if (e?.isPrivate || e?.message_type === "private") return sendWildFriend(e, msg, options)

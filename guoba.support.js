@@ -564,6 +564,19 @@ export function supportGuoba() {
             ],
           },
         },
+        {
+          field: "qqbot_user_id_conversion",
+          label: "QQBot用户ID转换",
+          component: "Switch",
+          helpMessage: "QWild 命令不参与身份转换；转换后将继承对应 QQ 号的权限",
+          bottomHelpMessage: "开启后，QQBot 收到消息时，已映射用户将以对应 QQ 号交给云崽插件处理",
+        },
+        {
+          field: "block_unmapped_qqbot_users",
+          label: "阻断未映射用户",
+          component: "Switch",
+          bottomHelpMessage: "仅在开启“QQBot用户ID转换”时生效；QQBot 收到未映射用户消息时直接阻断",
+        },
       ],
       getConfigData() {
         return {

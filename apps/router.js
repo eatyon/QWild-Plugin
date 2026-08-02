@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url"
 import { config } from "../model/config.js"
 import { mappedValue, qqbotId } from "../model/identity.js"
 import { candidateProtocol, eventProtocol, findBot, shouldBypassReceive, shouldBypassSend } from "./protocol.js"
+import { mapIncomingUser, patchMappedQQBotReply, shouldBlockUnmappedQQBotUser } from "./inbound.js"
 import { isBindingCommand, shouldBlockReceive } from "./receive.js"
 import { isMissingIdentityMapError, sendWild, sendQQBot } from "./sender.js"
 import { isSendSuccess, targetProtocol } from "./message.js"
@@ -71,6 +72,7 @@ function shouldBlockSingleProtocolAtMessage(e, protocol) {
 function patchReply(e) {
   patchDirectSend()
   patchRecall(e)
+  patchMappedQQBotReply(e)
   if (!config.enable || e?.[replyFlag] || !e?.reply?.bind) return
   if (shouldBypassSend()) return
   if (!config.send?.enable) return
@@ -128,8 +130,9 @@ async function patchLoader() {
 
   PluginsLoader.deal = async function qwildDeal(e) {
     patchDirectSend()
+    const protocol = eventProtocol(e)
+    let pluginEvent = e
     if (config.enable && !shouldBypassReceive() && e?.post_type === "message") {
-      const protocol = eventProtocol(e)
       if (shouldBlockUnselectedProtocol(e, protocol)) {
         Bot.makeLog(
           "debug",
@@ -162,8 +165,17 @@ async function patchLoader() {
         )
         return
       }
+      if (shouldBlockUnmappedQQBotUser(e, protocol)) {
+        Bot.makeLog(
+          "debug",
+          `[QWild] 已阻断未映射 QQBot 用户消息：${e.raw_message || e.msg || ""}`,
+          e.self_id,
+        )
+        return
+      }
+      pluginEvent = mapIncomingUser(e, protocol)
     }
-    return withCurrentEvent(e, () => originalDeal(e))
+    return withCurrentEvent(pluginEvent, () => originalDeal(pluginEvent))
   }
 
   PluginsLoader.reply = function qwildReply(e) {

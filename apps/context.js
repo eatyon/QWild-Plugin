@@ -7,6 +7,10 @@ export function getCurrentEvent() {
   return eventStore.getStore()?.event || null
 }
 
+export function sourceEvent(e) {
+  return e?.qwild_source_event || e || null
+}
+
 export async function withCurrentEvent(e, fn) {
   return eventStore.run({ event: e || null }, fn)
 }

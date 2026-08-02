@@ -131,6 +131,10 @@ export function isBindingCommand(e) {
   return commandText(e).some(text => /^#[Qq][Ww](?:绑定|取消绑定)(?:群聊|用户)(?:\s|$)/.test(text))
 }
 
+export function isQWildCommand(e) {
+  return commandText(e).some(text => /^#[Qq][Ww](?:\s|$|[\u3400-\u9fff])/.test(text))
+}
+
 function matchCommand(e, rules) {
   if (!rules?.length) return false
   const texts = commandText(e)
