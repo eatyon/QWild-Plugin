@@ -103,13 +103,6 @@ command_rules:
 
 ## 身份映射
 
-群聊映射格式：
-
-```yaml
-groups:
-  "BotID:GroupID": "群号"
-```
-
 用户映射格式：
 
 ```yaml
@@ -117,16 +110,23 @@ users:
   "BotID:UserID": "QQ号"
 ```
 
+群聊映射格式：
+
+```yaml
+groups:
+  "BotID:GroupID": "群号"
+```
+
 QQBot侧必须填写完整 `BotID:GroupID` 或 `BotID:UserID`，另一侧填写 QQ群号 或 QQ号。
 
 示例：
 
 ```yaml
-groups:
-  "123456789:GROUP_ID": "987654321"
-
 users:
   "123456789:USER_ID": "10001"
+
+groups:
+  "123456789:GROUP_ID": "987654321"
 ```
 
 ## 命令
@@ -151,16 +151,6 @@ users:
 #QW阻断Wild开启 / #QW阻断Wild关闭
 ```
 
-群聊映射：
-
-```text
-#QW绑定群聊 / #QW取消绑定群聊
-#QW添加群聊映射 BotID:GroupID=群号
-#QW删除群聊映射
-#QW删除群聊映射 BotID:GroupID
-#QW删除群聊映射 群号
-```
-
 用户映射：
 
 ```text
@@ -169,6 +159,16 @@ users:
 #QW删除用户映射
 #QW删除用户映射 BotID:UserID
 #QW删除用户映射 QQ号
+```
+
+群聊映射：
+
+```text
+#QW绑定群聊 / #QW取消绑定群聊
+#QW添加群聊映射 BotID:GroupID=群号
+#QW删除群聊映射
+#QW删除群聊映射 BotID:GroupID
+#QW删除群聊映射 群号
 ```
 
 更新命令：

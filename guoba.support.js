@@ -139,6 +139,14 @@ function modeOptions() {
   ]
 }
 
+function identityModeOptions() {
+  return [
+    { label: "关闭", value: "off" },
+    { label: "转换已映射", value: "convert" },
+    { label: "转换并阻断未映射", value: "block" },
+  ]
+}
+
 function protocolOptions(first = "qqbot") {
   const options = [
     { label: "不指定", value: "" },
@@ -507,35 +515,6 @@ export function supportGuoba() {
           label: "身份映射",
         },
         {
-          field: "groupList",
-          label: "群聊映射",
-          component: "GSubForm",
-          bottomHelpMessage: "完整 QQBot群ID 与 群号 的对应关系",
-          componentProps: {
-            multiple: true,
-            schemas: [
-              {
-                field: "qqbot",
-                label: "QQBot群",
-                component: "AutoComplete",
-                required: true,
-                componentProps: {
-                  options: groupOptions("qqbot"),
-                },
-              },
-              {
-                field: "wild",
-                label: "群号",
-                component: "AutoComplete",
-                required: true,
-                componentProps: {
-                  options: groupOptions("wild"),
-                },
-              },
-            ],
-          },
-        },
-        {
           field: "userList",
           label: "用户映射",
           component: "GSubForm",
@@ -565,24 +544,64 @@ export function supportGuoba() {
           },
         },
         {
-          field: "qqbot_user_id_conversion",
-          label: "QQBot用户ID转换",
-          component: "Switch",
-          helpMessage: "QWild 命令不参与身份转换；转换后将继承对应 QQ 号的权限",
-          bottomHelpMessage: "开启后，QQBot 收到消息时，已映射用户将以对应 QQ 号交给云崽插件处理",
+          field: "groupList",
+          label: "群聊映射",
+          component: "GSubForm",
+          bottomHelpMessage: "完整 QQBot群ID 与 群号 的对应关系",
+          componentProps: {
+            multiple: true,
+            schemas: [
+              {
+                field: "qqbot",
+                label: "QQBot群",
+                component: "AutoComplete",
+                required: true,
+                componentProps: {
+                  options: groupOptions("qqbot"),
+                },
+              },
+              {
+                field: "wild",
+                label: "群号",
+                component: "AutoComplete",
+                required: true,
+                componentProps: {
+                  options: groupOptions("wild"),
+                },
+              },
+            ],
+          },
         },
         {
-          field: "block_unmapped_qqbot_users",
-          label: "阻断未映射用户",
-          component: "Switch",
-          bottomHelpMessage: "仅在开启“QQBot用户ID转换”时生效；QQBot 收到未映射用户消息时直接阻断",
+          component: "Divider",
+          label: "QQBot 身份转换",
+        },
+        {
+          field: "qqbot_user_id_mode",
+          label: "用户ID处理",
+          component: "Select",
+          helpMessage: "QWild 命令不参与身份转换；依赖 QQBot 原始 ID 的功能可能不兼容",
+          bottomHelpMessage: "QQBot 收到消息时，已映射用户将以对应 QQ 号交给云崽插件处理",
+          componentProps: {
+            options: identityModeOptions(),
+          },
+        },
+        {
+          field: "qqbot_group_id_mode",
+          label: "群聊ID处理",
+          component: "Select",
+          helpMessage: "QWild 命令不参与身份转换；依赖 QQBot 原始 ID 的功能可能不兼容",
+          bottomHelpMessage: "QQBot 收到群消息时，已映射群聊将以对应 QQ 群号交给云崽插件处理",
+          componentProps: {
+            options: identityModeOptions(),
+          },
         },
       ],
       getConfigData() {
         return {
           ...structuredClone(config),
-          groupList: mappingList(config.groups),
           userList: mappingList(config.users),
+          groupList: mappingList(config.groups),
           qqbotCommandAllowRules: commandList(config.receive.qqbot.command_allow_rules),
           wildCommandAllowRules: commandList(config.receive.wild.command_allow_rules),
           sendCommandRules: sendCommandList(config.send.command_rules),

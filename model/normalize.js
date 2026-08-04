@@ -10,6 +10,10 @@ function normalizeBoolean(value, fallback = false) {
   return value === undefined ? fallback : Boolean(value)
 }
 
+function normalizeIdentityMode(value) {
+  return ["off", "convert", "block"].includes(value) ? value : "off"
+}
+
 function normalizeOptionalProtocol(value) {
   value = String(value || "").trim().toLowerCase()
   return ["qqbot", "wild"].includes(value) ? value : ""
@@ -99,8 +103,8 @@ export function normalizeConfig(config, defaultConfig) {
   config.block_unselected_protocols = normalizeBoolean(config.block_unselected_protocols, false)
   config.block_peer_bot_messages = normalizeBoolean(config.block_peer_bot_messages, true)
   config.single_protocol_at_messages = normalizeBoolean(config.single_protocol_at_messages, true)
-  config.qqbot_user_id_conversion = normalizeBoolean(config.qqbot_user_id_conversion, false)
-  config.block_unmapped_qqbot_users = normalizeBoolean(config.block_unmapped_qqbot_users, false)
+  config.qqbot_group_id_mode = normalizeIdentityMode(config.qqbot_group_id_mode)
+  config.qqbot_user_id_mode = normalizeIdentityMode(config.qqbot_user_id_mode)
   config.protocols.qqbot.adapter = String(config.protocols.qqbot.adapter || "QQBot").trim()
   config.protocols.wild.adapter = String(config.protocols.wild.adapter || "").trim()
   config.protocols.qqbot.self_id = String(config.protocols.qqbot.self_id || "").trim()

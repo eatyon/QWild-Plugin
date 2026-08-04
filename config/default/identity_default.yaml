@@ -1,16 +1,17 @@
 # QWild 身份映射
 # 跨协议发送时，回复消息里的艾特对象会按用户映射自动转换；未配置映射时保持原样。
-# 群聊映射：完整 QQBot群ID 与 群号 的对应关系。
-# QQBot群ID必须是 BotID:GroupID。
-groups: {}
-
 # 用户映射：完整 QQBot用户ID 与 QQ号 的对应关系。
 # QQBot用户ID必须是 BotID:UserID。
 users: {}
 
-# QQBot用户ID转换：开启后，QQBot 收到消息时，已映射用户将以对应 QQ 号交给云崽插件处理。
-# QWild 命令不参与身份转换；转换后将继承对应 QQ 号的权限。
-qqbot_user_id_conversion: false
+# 群聊映射：完整 QQBot群ID 与 群号 的对应关系。
+# QQBot群ID必须是 BotID:GroupID。
+groups: {}
 
-# 阻断未映射用户：仅在开启“QQBot用户ID转换”时生效；QQBot 收到未映射用户消息时直接阻断。
-block_unmapped_qqbot_users: false
+# QQBot用户ID处理：off=关闭，convert=转换已映射用户，block=转换并阻断未映射用户。
+# QWild 命令不参与身份转换；依赖 QQBot 原始 ID 的功能可能不兼容。
+qqbot_user_id_mode: off
+
+# QQBot群聊ID处理：off=关闭，convert=转换已映射群聊，block=转换并阻断未映射群聊。
+# QWild 命令不参与身份转换；依赖 QQBot 原始 ID 的功能可能不兼容。
+qqbot_group_id_mode: off

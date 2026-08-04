@@ -3,7 +3,7 @@ import { pathToFileURL } from "node:url"
 import { config } from "../model/config.js"
 import { mappedValue, qqbotId } from "../model/identity.js"
 import { candidateProtocol, eventProtocol, findBot, shouldBypassReceive, shouldBypassSend } from "./protocol.js"
-import { mapIncomingUser, patchMappedQQBotReply, shouldBlockUnmappedQQBotUser } from "./inbound.js"
+import { mapIncomingIdentity, patchMappedQQBotReply, shouldBlockUnmappedQQBotGroup, shouldBlockUnmappedQQBotUser } from "./inbound.js"
 import { isBindingCommand, shouldBlockReceive } from "./receive.js"
 import { isMissingIdentityMapError, sendWild, sendQQBot } from "./sender.js"
 import { isSendSuccess, targetProtocol } from "./message.js"
@@ -173,7 +173,15 @@ async function patchLoader() {
         )
         return
       }
-      pluginEvent = mapIncomingUser(e, protocol)
+      if (shouldBlockUnmappedQQBotGroup(e, protocol)) {
+        Bot.makeLog(
+          "debug",
+          `[QWild] 已阻断未映射 QQBot 群消息：${e.raw_message || e.msg || ""}`,
+          e.self_id,
+        )
+        return
+      }
+      pluginEvent = mapIncomingIdentity(e, protocol)
     }
     return withCurrentEvent(pluginEvent, () => originalDeal(pluginEvent))
   }

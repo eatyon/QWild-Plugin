@@ -371,10 +371,10 @@ export class qwildAdmin extends plugin {
     if (!groups.length && !users.length) return this.reply(`未找到相关映射：${keyword}`, true)
 
     const nodes = [
-      [`群聊映射：${groups.length} 条`, `用户映射：${users.length} 条`].join("\n"),
+      [`用户映射：${users.length} 条`, `群聊映射：${groups.length} 条`].join("\n"),
     ]
-    if (groups.length) nodes.push("群聊映射：", ...mapMessageNodes(groups))
     if (users.length) nodes.push("用户映射：", ...mapMessageNodes(users))
+    if (groups.length) nodes.push("群聊映射：", ...mapMessageNodes(groups))
 
     const msg = await common.makeForwardMsg(this.e, nodes, `QWild 映射搜索：${keyword}`)
     return this.reply(msg)

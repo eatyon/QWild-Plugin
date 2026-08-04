@@ -93,10 +93,10 @@ export const defaultConfig = {
     link: "",
     command_rules: [],
   },
-  qqbot_user_id_conversion: false,
-  block_unmapped_qqbot_users: false,
-  groups: {},
   users: {},
+  groups: {},
+  qqbot_user_id_mode: "off",
+  qqbot_group_id_mode: "off",
 }
 
 export const config = structuredClone(defaultConfig)
@@ -156,14 +156,10 @@ function mergeModule(name, value) {
       mergeConfig(config.send, value.send && typeof value.send === "object" ? value.send : value)
       break
     case "identity": {
-      if (Object.hasOwn(value, "qqbot_user_id_conversion")) {
-        config.qqbot_user_id_conversion = value.qqbot_user_id_conversion
-      }
-      if (Object.hasOwn(value, "block_unmapped_qqbot_users")) {
-        config.block_unmapped_qqbot_users = value.block_unmapped_qqbot_users
-      }
-      if (value.groups) config.groups = value.groups
       if (value.users) config.users = value.users
+      if (value.groups) config.groups = value.groups
+      if (Object.hasOwn(value, "qqbot_user_id_mode")) config.qqbot_user_id_mode = value.qqbot_user_id_mode
+      if (Object.hasOwn(value, "qqbot_group_id_mode")) config.qqbot_group_id_mode = value.qqbot_group_id_mode
       break
     }
   }
@@ -293,20 +289,21 @@ command_rules: ${stringifyCommandRules(config.send.command_rules, true)}
 function stringifyIdentityConfig() {
   return `# QWild 身份映射
 # 跨协议发送时，回复消息里的艾特对象会按用户映射自动转换；未配置映射时保持原样。
-# 群聊映射：完整 QQBot群ID 与 群号 的对应关系。
-# QQBot群ID必须是 BotID:GroupID。
-groups: ${stringifyGroups(config.groups)}
-
 # 用户映射：完整 QQBot用户ID 与 QQ号 的对应关系。
 # QQBot用户ID必须是 BotID:UserID。
 users: ${stringifyGroups(config.users)}
 
-# QQBot用户ID转换：开启后，QQBot 收到消息时，已映射用户将以对应 QQ 号交给云崽插件处理。
-# QWild 命令不参与身份转换；转换后将继承对应 QQ 号的权限。
-qqbot_user_id_conversion: ${config.qqbot_user_id_conversion}
+# 群聊映射：完整 QQBot群ID 与 群号 的对应关系。
+# QQBot群ID必须是 BotID:GroupID。
+groups: ${stringifyGroups(config.groups)}
 
-# 阻断未映射用户：仅在开启“QQBot用户ID转换”时生效；QQBot 收到未映射用户消息时直接阻断。
-block_unmapped_qqbot_users: ${config.block_unmapped_qqbot_users}
+# QQBot用户ID处理：off=关闭，convert=转换已映射用户，block=转换并阻断未映射用户。
+# QWild 命令不参与身份转换；依赖 QQBot 原始 ID 的功能可能不兼容。
+qqbot_user_id_mode: ${config.qqbot_user_id_mode}
+
+# QQBot群聊ID处理：off=关闭，convert=转换已映射群聊，block=转换并阻断未映射群聊。
+# QWild 命令不参与身份转换；依赖 QQBot 原始 ID 的功能可能不兼容。
+qqbot_group_id_mode: ${config.qqbot_group_id_mode}
 `
 }
 

@@ -9,6 +9,10 @@ function botId(e) {
   return String(e?.self_id || e?.bot?.uin || e?.bot?.self_id || "")
 }
 
+function isGroupMessage(e) {
+  return Boolean(e?.isGroup || e?.message_type === "group")
+}
+
 function atId(item) {
   return String(item?.qq || item?.user_id || item?.data?.qq || item?.data?.user_id || "")
 }
@@ -45,25 +49,37 @@ function mapAtMessage(e, selfId) {
 }
 
 export function shouldBlockUnmappedQQBotUser(e, protocol) {
-  if (!config.qqbot_user_id_conversion || !config.block_unmapped_qqbot_users) return false
+  if (config.qqbot_user_id_mode !== "block") return false
   if (protocol !== "qqbot" || !e?.post_type || isQWildCommand(e)) return false
 
   const sourceUserId = qqbotId(botId(e), e?.user_id)
   return Boolean(sourceUserId && !mappedValue(config.users, sourceUserId))
 }
 
-export function mapIncomingUser(e, protocol) {
-  if (!config.qqbot_user_id_conversion || protocol !== "qqbot" || !e?.post_type || isQWildCommand(e)) return e
+export function shouldBlockUnmappedQQBotGroup(e, protocol) {
+  if (config.qqbot_group_id_mode !== "block") return false
+  if (protocol !== "qqbot" || !e?.post_type || !isGroupMessage(e) || isQWildCommand(e)) return false
+
+  const sourceGroupId = qqbotId(botId(e), e?.group_id)
+  return Boolean(sourceGroupId && !mappedValue(config.groups, sourceGroupId))
+}
+
+export function mapIncomingIdentity(e, protocol) {
+  const mapGroup = config.qqbot_group_id_mode !== "off" && isGroupMessage(e)
+  const mapUser = config.qqbot_user_id_mode !== "off"
+  if ((!mapGroup && !mapUser) || protocol !== "qqbot" || !e?.post_type || isQWildCommand(e)) return e
 
   const selfId = botId(e)
   const sourceUserId = qqbotId(selfId, e?.user_id)
-  const mappedUserId = sourceUserId && mappedValue(config.users, sourceUserId)
-  const mappedAt = mapAtMessage(e, selfId)
-  if (!mappedUserId && !mappedAt.changed) return e
+  const mappedUserId = mapUser && sourceUserId && mappedValue(config.users, sourceUserId)
+  const mappedAt = mapUser ? mapAtMessage(e, selfId) : { changed: false }
+  const sourceGroupId = mapGroup ? qqbotId(selfId, e?.group_id) : ""
+  const mappedGroupId = sourceGroupId && mappedValue(config.groups, sourceGroupId)
+  if (!mappedGroupId && !mappedUserId && !mappedAt.changed) return e
 
   const next = Object.create(e)
   next.qwild_source_event = e
-  next.qwild_source_user_id = sourceUserId
+  if (mapUser) next.qwild_source_user_id = sourceUserId
   if (mappedAt.changed) next.message = mappedAt.message
   if (mappedUserId) {
     Object.defineProperty(next, "user_id", {
@@ -74,11 +90,19 @@ export function mapIncomingUser(e, protocol) {
     })
     next.sender = { ...e.sender, user_id: mappedUserId }
   }
+  if (mappedGroupId) {
+    Object.defineProperty(next, "group_id", {
+      value: mappedGroupId,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    })
+  }
   return next
 }
 
 export function patchMappedQQBotReply(e) {
-  if (!e?.qwild_source_event || e[mappedReplyFlag] || !e?.reply?.bind) return
+  if (!e?.qwild_source_event || !e?.qwild_source_user_id || e[mappedReplyFlag] || !e?.reply?.bind) return
 
   const source = e.qwild_source_event
   const selfId = botId(source)
