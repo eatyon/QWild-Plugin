@@ -124,8 +124,18 @@ function searchMap(map, keyword) {
     .map(([qqbot, wild]) => ({ qqbot, wild }))
 }
 
-function mapLines(list) {
-  return list.map((item, index) => `${index + 1}. ${mapText(item)}`).join("\n")
+const mappingLinesPerNode = 50
+
+function mapMessageNodes(list) {
+  const lines = list.map((item, index) => `${index + 1}. ${mapText(item)}`)
+  return lines
+    .reduce((nodes, line, index) => {
+      const nodeIndex = Math.floor(index / mappingLinesPerNode)
+      if (!nodes[nodeIndex]) nodes[nodeIndex] = []
+      nodes[nodeIndex].push(line)
+      return nodes
+    }, [])
+    .map(lines => lines.join("\n"))
 }
 
 function currentQQBotId() {
@@ -358,14 +368,13 @@ export class qwildAdmin extends plugin {
 
     const groups = searchMap(config.groups, keyword)
     const users = searchMap(config.users, keyword)
-    const total = groups.length + users.length
-    if (!total) return this.reply(`未找到相关映射：${keyword}`, true)
+    if (!groups.length && !users.length) return this.reply(`未找到相关映射：${keyword}`, true)
 
     const nodes = [
-      [`群聊映射：${groups.length} 条`, `用户映射：${users.length} 条`, `总计：${total} 条`].join("\n"),
+      [`群聊映射：${groups.length} 条`, `用户映射：${users.length} 条`].join("\n"),
     ]
-    if (groups.length) nodes.push("群聊映射：", mapLines(groups))
-    if (users.length) nodes.push("用户映射：", mapLines(users))
+    if (groups.length) nodes.push("群聊映射：", ...mapMessageNodes(groups))
+    if (users.length) nodes.push("用户映射：", ...mapMessageNodes(users))
 
     const msg = await common.makeForwardMsg(this.e, nodes, `QWild 映射搜索：${keyword}`)
     return this.reply(msg)
