@@ -77,22 +77,33 @@ function shouldPatchMasterPlugin(e, protocol) {
   return Boolean(id && mappedValue(config.users, id))
 }
 
+function masterSourceEvent(e) {
+  const source = e?.qwild_source_event
+  if (!source || source === e) return null
+
+  const next = Object.create(e)
+  Object.defineProperty(next, "user_id", {
+    value: source.user_id,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  })
+  next.sender = { ...e.sender, user_id: source.user_id }
+  return next
+}
+
 function patchMasterMethod(prototype, name) {
   const original = prototype[name]
   prototype[name] = async function qwildMasterMethod(...args) {
     const event = this.e
-    const source = event?.qwild_source_event
+    const source = masterSourceEvent(event)
     if (!source || source === event) return original.apply(this, args)
 
-    const sourceIsMaster = source.isMaster
-    if (event.isMaster) source.isMaster = true
     this.e = source
     try {
       return await original.apply(this, args)
     } finally {
       this.e = event
-      if (sourceIsMaster === undefined) delete source.isMaster
-      else source.isMaster = sourceIsMaster
     }
   }
 }
@@ -106,7 +117,7 @@ function patchMasterPlugin() {
   const originalConKey = prototype.conKey
   prototype.conKey = function qwildMasterConKey(...args) {
     const event = this.e
-    const source = event?.qwild_source_event
+    const source = masterSourceEvent(event)
     if (!source || source === event) return originalConKey.apply(this, args)
 
     this.e = source
