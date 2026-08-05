@@ -9,7 +9,8 @@ users: {}
 groups: {}
 
 # QQBot用户ID处理：off=关闭，convert=转换已映射用户，block=转换并阻断未映射用户。
-# QWild 命令不参与身份转换；依赖 QQBot 原始 ID 的功能可能不兼容。
+# QWild 命令不参与身份转换；主人权限按原始 ID 保留，请在开启前完成主人设置。
+# 其他依赖 QQBot 原始 ID 的功能可能不兼容。
 qqbot_user_id_mode: off
 
 # QQBot群聊ID处理：off=关闭，convert=转换已映射群聊，block=转换并阻断未映射群聊。

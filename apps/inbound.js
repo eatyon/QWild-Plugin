@@ -2,6 +2,7 @@ import { config } from "../model/config.js"
 import { mappedValue, qqbotId, reverseMappedValue } from "../model/identity.js"
 import { mapAtMsg } from "./sender.js"
 import { isQWildCommand } from "./receive.js"
+import cfg from "../../../lib/config/config.js"
 
 const mappedReplyFlag = Symbol.for("QWild.Plugin.MappedReplyPatched")
 
@@ -11,6 +12,10 @@ function botId(e) {
 
 function isGroupMessage(e) {
   return Boolean(e?.isGroup || e?.message_type === "group")
+}
+
+function isMaster(selfId, userId) {
+  return Boolean(userId && cfg.master?.[selfId]?.includes(String(userId)))
 }
 
 function atId(item) {
@@ -80,6 +85,7 @@ export function mapIncomingIdentity(e, protocol) {
   const next = Object.create(e)
   next.qwild_source_event = e
   if (mapUser) next.qwild_source_user_id = sourceUserId
+  if (isMaster(selfId, sourceUserId)) next.isMaster = true
   if (mappedAt.changed) next.message = mappedAt.message
   if (mappedUserId) {
     Object.defineProperty(next, "user_id", {

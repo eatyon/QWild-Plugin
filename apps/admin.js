@@ -324,8 +324,8 @@ export class qwildAdmin extends plugin {
       {
         group: "身份映射",
         list: [
-          { title: "群聊映射", value: `${countMap(config.groups)} 个`, type: "route" },
           { title: "用户映射", value: `${countMap(config.users)} 个`, type: "route" },
+          { title: "群聊映射", value: `${countMap(config.groups)} 个`, type: "route" },
         ],
       },
     ]

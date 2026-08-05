@@ -580,7 +580,7 @@ export function supportGuoba() {
           field: "qqbot_user_id_mode",
           label: "用户ID处理",
           component: "Select",
-          helpMessage: "QWild 命令不参与身份转换；依赖 QQBot 原始 ID 的功能可能不兼容",
+          helpMessage: "QWild 命令不参与身份转换；主人权限按原始 ID 保留，请在开启前完成主人设置",
           bottomHelpMessage: "QQBot 收到消息时，已映射用户将以对应 QQ 号交给云崽插件处理",
           componentProps: {
             options: identityModeOptions(),
@@ -591,7 +591,7 @@ export function supportGuoba() {
           label: "群聊ID处理",
           component: "Select",
           helpMessage: "QWild 命令不参与身份转换；依赖 QQBot 原始 ID 的功能可能不兼容",
-          bottomHelpMessage: "QQBot 收到群消息时，已映射群聊将以对应 QQ 群号交给云崽插件处理",
+          bottomHelpMessage: "QQBot 收到消息时，已映射群聊将以对应 QQ 群号交给云崽插件处理",
           componentProps: {
             options: identityModeOptions(),
           },
