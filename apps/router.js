@@ -4,7 +4,7 @@ import { config } from "../model/config.js"
 import { mappedValue, qqbotId } from "../model/identity.js"
 import { candidateProtocol, eventProtocol, findBot, shouldBypassReceive, shouldBypassSend } from "./protocol.js"
 import { mapIncomingIdentity, patchMappedQQBotReply, shouldBlockUnmappedQQBotGroup, shouldBlockUnmappedQQBotUser } from "./inbound.js"
-import { isBindingCommand, shouldBlockReceive } from "./receive.js"
+import { isBindingCommand, isSetMasterCommand, shouldBlockReceive } from "./receive.js"
 import { isMissingIdentityMapError, sendWild, sendQQBot } from "./sender.js"
 import { isSendSuccess, targetProtocol } from "./message.js"
 import { patchDirectSend } from "./direct.js"
@@ -13,6 +13,8 @@ import { messageIds, patchRecall, recallRoutedMessage } from "./recall.js"
 
 const patchFlag = Symbol.for("QWild.Plugin.RouterPatched")
 const replyFlag = Symbol.for("QWild.Plugin.ReplyPatched")
+const masterPatchFlag = Symbol.for("QWild.Plugin.MasterPatched")
+let pluginLoader
 
 function isGroupMessage(e) {
   return Boolean(e?.isGroup || e?.message_type === "group")
@@ -69,6 +71,57 @@ function shouldBlockSingleProtocolAtMessage(e, protocol) {
   return targetProtocols.length === 1 && targetProtocols[0] !== protocol
 }
 
+function shouldPatchMasterPlugin(e, protocol) {
+  if (config.qqbot_user_id_mode === "off" || protocol !== "qqbot" || !isSetMasterCommand(e)) return false
+  const id = qqbotId(e?.self_id || e?.bot?.uin || e?.bot?.self_id, e?.user_id)
+  return Boolean(id && mappedValue(config.users, id))
+}
+
+function patchMasterMethod(prototype, name) {
+  const original = prototype[name]
+  prototype[name] = async function qwildMasterMethod(...args) {
+    const event = this.e
+    const source = event?.qwild_source_event
+    if (!source || source === event) return original.apply(this, args)
+
+    const sourceIsMaster = source.isMaster
+    if (event.isMaster) source.isMaster = true
+    this.e = source
+    try {
+      return await original.apply(this, args)
+    } finally {
+      this.e = event
+      if (sourceIsMaster === undefined) delete source.isMaster
+      else source.isMaster = sourceIsMaster
+    }
+  }
+}
+
+function patchMasterPlugin() {
+  const item = pluginLoader?.priority?.find(item => item.key === "system/master.js")
+  const prototype = item?.class?.prototype
+  if (!prototype || typeof prototype.master !== "function" || typeof prototype.verify !== "function") return false
+  if (prototype[masterPatchFlag]) return true
+
+  const originalConKey = prototype.conKey
+  prototype.conKey = function qwildMasterConKey(...args) {
+    const event = this.e
+    const source = event?.qwild_source_event
+    if (!source || source === event) return originalConKey.apply(this, args)
+
+    this.e = source
+    try {
+      return originalConKey.apply(this, args)
+    } finally {
+      this.e = event
+    }
+  }
+  patchMasterMethod(prototype, "master")
+  patchMasterMethod(prototype, "verify")
+  Object.defineProperty(prototype, masterPatchFlag, { value: true })
+  return true
+}
+
 function patchReply(e) {
   patchDirectSend()
   patchRecall(e)
@@ -123,6 +176,7 @@ function scheduleRecall(ret, recallMsg) {
 async function patchLoader() {
   const loaderUrl = pathToFileURL(path.join(process.cwd(), "lib/plugins/loader.js")).href
   const { default: PluginsLoader } = await import(loaderUrl)
+  pluginLoader = PluginsLoader
   if (PluginsLoader[patchFlag]) return
 
   const originalDeal = PluginsLoader.deal.bind(PluginsLoader)
@@ -179,6 +233,10 @@ async function patchLoader() {
           `[QWild] 已阻断未映射 QQBot 群消息：${e.raw_message || e.msg || ""}`,
           e.self_id,
         )
+        return
+      }
+      if (shouldPatchMasterPlugin(e, protocol) && !patchMasterPlugin()) {
+        Bot.makeLog("error", "[QWild] 设置主人兼容失败，可关闭用户ID转换或删除目标用户映射后重试", e.self_id)
         return
       }
       pluginEvent = mapIncomingIdentity(e, protocol)

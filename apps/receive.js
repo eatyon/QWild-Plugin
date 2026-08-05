@@ -135,6 +135,10 @@ export function isQWildCommand(e) {
   return commandText(e).some(text => /^#[Qq][Ww](?:\s|$|[\u3400-\u9fff])/.test(text))
 }
 
+export function isSetMasterCommand(e) {
+  return commandText(e).some(text => /^#设置主人$/.test(text))
+}
+
 function matchCommand(e, rules) {
   if (!rules?.length) return false
   const texts = commandText(e)
